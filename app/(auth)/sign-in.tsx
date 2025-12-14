@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSession } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -12,7 +12,11 @@ export default function SignIn() {
 
     const handleLogin = async () => {
         if (!username || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
+            if (Platform.OS === 'web') {
+                window.alert('Bitte füllen Sie alle Felder aus.');
+            } else {
+                Alert.alert('Fehler', 'Bitte füllen Sie alle Felder aus.');
+            }
             return;
         }
 
@@ -24,11 +28,22 @@ export default function SignIn() {
             });
 
             const { access, refresh } = response.data;
-            signIn(access, refresh);
+            signIn(access, refresh, username);
             router.replace('/');
         } catch (error: any) {
-            console.error(error);
-            Alert.alert('Login Failed', 'Invalid credentials or server error');
+            let errorMessage = 'Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Eingaben.';
+
+            if (error.response?.status === 401) {
+                errorMessage = 'Ungültiger Benutzername oder Passwort.';
+            } else if (error.response?.data?.detail) {
+                errorMessage = error.response.data.detail;
+            }
+
+            if (Platform.OS === 'web') {
+                window.alert(errorMessage);
+            } else {
+                Alert.alert('Anmeldung fehlgeschlagen', errorMessage);
+            }
         } finally {
             setLoading(false);
         }

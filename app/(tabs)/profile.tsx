@@ -5,15 +5,15 @@ import { useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
-    const { signOut, session } = useSession();
+    const { signOut, session, username: contextUsername } = useSession();
     const [username, setUsername] = useState<string>('User');
 
     useEffect(() => {
-        if (session) {
+        if (contextUsername) {
+            setUsername(contextUsername);
+        } else if (session) {
             try {
                 const decoded: any = jwtDecode(session);
-                // Adjust this depending on what your backend actually sends in the token
-                // verified: simplejwt default usually has user_id, sometimes username/name if configured
                 if (decoded.username) {
                     setUsername(decoded.username);
                 } else if (decoded.user_id) {
@@ -23,7 +23,7 @@ export default function ProfileScreen() {
                 console.error('Failed to decode token:', e);
             }
         }
-    }, [session]);
+    }, [session, contextUsername]);
 
     const handleLogout = () => {
         if (typeof window !== 'undefined' && Platform.OS === 'web') {

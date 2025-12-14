@@ -1,17 +1,23 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSession } from '../../context/AuthContext';
 import api from '../../services/api';
 
 export default function SignUp() {
+    const { signIn } = useSession();
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState(''); // Assuming email is standard often
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleRegister = async () => {
-        if (!username || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
+        if (!username || !email || !password) {
+            if (Platform.OS === 'web') {
+                window.alert('Bitte füllen Sie alle Felder aus.');
+            } else {
+                Alert.alert('Fehler', 'Bitte füllen Sie alle Felder aus.');
+            }
             return;
         }
 
@@ -24,29 +30,65 @@ export default function SignUp() {
                 password,
             });
 
-            Alert.alert('Success', 'Account created successfully. Please log in.');
-            router.back(); // Go back to Login
+            // Auto-login after successful registration
+            const loginResponse = await api.post('/api/token/', {
+                username,
+                password,
+            });
+
+            const { access, refresh } = loginResponse.data;
+            signIn(access, refresh, username);
+            router.replace('/');
         } catch (error: any) {
-            console.error(error);
-            let errorMessage = 'Could not create account. Try again.';
+            let errorMessage = 'Das Konto konnte nicht erstellt werden. Bitte versuchen Sie es erneut.';
 
             if (error.response?.data) {
                 // If the backend returns structured validation errors (e.g. { username: ["Exists"] })
                 try {
                     const data = error.response.data;
                     if (typeof data === 'object') {
-                        errorMessage = Object.entries(data)
-                            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-                            .join('\n');
+                        const messages: string[] = [];
+
+                        // Helper to translate keys
+                        const getLabel = (key: string) => {
+                            switch (key) {
+                                case 'username': return 'Benutzername';
+                                case 'email': return 'E-Mail';
+                                case 'password': return 'Passwort';
+                                default: return key;
+                            }
+                        };
+
+                        Object.entries(data).forEach(([key, value]) => {
+                            const label = getLabel(key);
+                            let text = Array.isArray(value) ? value.join(', ') : String(value);
+
+                            // Basic translation of common backend errors
+                            if (text.includes('already exists')) {
+                                text = 'existiert bereits.';
+                            } else if (text.includes('required')) {
+                                text = 'ist erforderlich.';
+                            }
+
+                            messages.push(`${label}: ${text}`);
+                        });
+
+                        if (messages.length > 0) {
+                            errorMessage = messages.join('\n');
+                        }
                     } else if (typeof data === 'string') {
                         errorMessage = data;
                     }
                 } catch (e) {
-                    console.error('Error parsing error response:', e);
+                    // Ignore parsing error
                 }
             }
 
-            Alert.alert('Registration Failed', errorMessage);
+            if (Platform.OS === 'web') {
+                window.alert(errorMessage);
+            } else {
+                Alert.alert('Registrierung fehlgeschlagen', errorMessage);
+            }
         } finally {
             setLoading(false);
         }
