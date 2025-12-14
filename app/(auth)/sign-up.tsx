@@ -28,7 +28,25 @@ export default function SignUp() {
             router.back(); // Go back to Login
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Registration Failed', 'Could not create account. Try again.');
+            let errorMessage = 'Could not create account. Try again.';
+
+            if (error.response?.data) {
+                // If the backend returns structured validation errors (e.g. { username: ["Exists"] })
+                try {
+                    const data = error.response.data;
+                    if (typeof data === 'object') {
+                        errorMessage = Object.entries(data)
+                            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+                            .join('\n');
+                    } else if (typeof data === 'string') {
+                        errorMessage = data;
+                    }
+                } catch (e) {
+                    console.error('Error parsing error response:', e);
+                }
+            }
+
+            Alert.alert('Registration Failed', errorMessage);
         } finally {
             setLoading(false);
         }
