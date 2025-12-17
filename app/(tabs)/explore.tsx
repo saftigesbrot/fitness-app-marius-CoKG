@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function ExploreScreen() {
   const categories = ['Brust', 'Rücken', 'Beine', 'Schultern', 'Arme', 'Core'];
@@ -12,19 +13,23 @@ export default function ExploreScreen() {
     { name: 'Schrägbankdrücken', icon: 'dumbbell.fill' }, // using generic dumbbell if specific not avail
     { name: 'Fliegende', icon: 'figure.run' }
   ];
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardColor = useThemeColor({}, 'card');
+  const primaryColor = useThemeColor({}, 'primary');
+  const textColor = useThemeColor({}, 'text');
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor }]}>
         <ThemedText type="title" style={styles.headerTitle}>Explore</ThemedText>
 
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, { backgroundColor: cardColor }]}>
           <IconSymbol name="magnifyingglass" size={20} color="#aaa" style={styles.searchIcon} />
           <TextInput
             placeholder="Suche nach Plänen oder Übungen"
             placeholderTextColor="#aaa"
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: textColor }]}
           />
         </View>
 
@@ -50,7 +55,7 @@ export default function ExploreScreen() {
             </View>
           </View>
           {/* New Plan Card */}
-          <View style={[styles.planCard, styles.newPlanCard]}>
+          <View style={[styles.planCard, styles.newPlanCard, { backgroundColor: cardColor, borderColor: '#333' }]}>
             <View style={styles.plusCircle}>
               <IconSymbol name="plus" size={30} color="#fff" />
             </View>
@@ -105,7 +110,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1c1c1e',
+    // backgroundColor handled by theme
     padding: 12,
     borderRadius: 10,
     alignItems: 'center',
@@ -158,7 +163,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   newPlanCard: {
-    backgroundColor: '#1c1c1e',
+    // backgroundColor handled by theme
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -169,7 +174,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2D74DA',
+    backgroundColor: '#397cc0',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 5,
@@ -186,7 +191,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   categoryButton: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: '#283042', // Using fixed dark color for now or could use theme, but let's stick to design
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -202,7 +207,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: '#283042',
     borderRadius: 12,
   },
   exerciseIconBg: {
@@ -214,7 +219,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   createButton: {
-    backgroundColor: '#2D74DA',
+    backgroundColor: '#397cc0',
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',

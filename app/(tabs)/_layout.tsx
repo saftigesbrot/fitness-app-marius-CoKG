@@ -6,22 +6,29 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const backgroundColor = useThemeColor({}, 'card'); // Tab bar background usually matches card/surface color in dark mode
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: Platform.select({
           ios: {
-            // Use a transparent background on iOS to verify if it looks like the design
             position: 'absolute',
+            backgroundColor: backgroundColor,
+            borderTopColor: 'transparent', // Cleaner look
           },
-          default: {},
+          default: {
+            backgroundColor: backgroundColor,
+            borderTopColor: 'transparent',
+          },
         }),
       }}>
       <Tabs.Screen

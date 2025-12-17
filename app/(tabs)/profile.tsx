@@ -6,9 +6,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function ProfileScreen() {
     const { signOut } = useSession();
+    const backgroundColor = useThemeColor({}, 'background');
+    const cardColor = useThemeColor({}, 'card');
+    const cardBorderColor = useThemeColor({ light: '#e5e5ea', dark: '#333' }, 'icon');
+    const textColor = useThemeColor({}, 'text');
+    const secondaryTextColor = useThemeColor({ light: '#8e8e93', dark: '#9BA1A6' }, 'icon');
 
     const handleLogout = () => {
         Alert.alert("Logout", "Are you sure?", [
@@ -18,10 +24,10 @@ export default function ProfileScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.container}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
+            <ScrollView contentContainerStyle={[styles.container, { backgroundColor }]}>
                 {/* Header */}
-                <View style={styles.header}>
+                <View style={[styles.header, { borderBottomColor: cardBorderColor }]}>
                     <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.avatar} />
                     <View style={styles.headerText}>
                         <ThemedText type="title">Max Mustermann</ThemedText>
@@ -46,9 +52,9 @@ export default function ProfileScreen() {
                 {/* Personal Records */}
                 <View style={styles.sectionHeader}>
                     <ThemedText type="subtitle">Persönliche Rekorde</ThemedText>
-                    <IconSymbol name="chevron.right" size={20} color="#aaa" />
+                    <IconSymbol name="chevron.right" size={20} color={secondaryTextColor} />
                 </View>
-                <ThemedView style={styles.card}>
+                <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
                     <View style={styles.recordItem}>
                         <IconSymbol name="trophy.fill" size={16} color="#FFD700" style={styles.recordIcon} />
                         <ThemedText style={styles.recordText}>Bankdrücken: 100 kg</ThemedText>
@@ -75,12 +81,12 @@ export default function ProfileScreen() {
                 {/* Public Plans */}
                 <ThemedText type="subtitle" style={styles.sectionTitle}>Öffentliche Trainingspläne</ThemedText>
                 <View style={styles.planList}>
-                    <TouchableOpacity style={styles.planItem}>
+                    <TouchableOpacity style={[styles.planItem, { backgroundColor: cardColor }]}>
                         <IconSymbol name="dumbbell.fill" size={20} color="#fff" />
                         <ThemedText style={styles.planName}>Ganzkörper-Push (Öffentlich)</ThemedText>
                         <IconSymbol name="pencil" size={16} color="#aaa" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.planItem}>
+                    <TouchableOpacity style={[styles.planItem, { backgroundColor: cardColor }]}>
                         <IconSymbol name="dumbbell.fill" size={20} color="#fff" />
                         <ThemedText style={styles.planName}>Beine & Core (Privat)</ThemedText>
                         <IconSymbol name="lock.fill" size={16} color="#aaa" />
@@ -95,7 +101,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#0a0a0a',
+        // backgroundColor handled by theme
     },
     container: {
         padding: 20,
@@ -104,6 +110,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 25,
+        // borderBottomColor handled by inline style
     },
     avatar: {
         width: 60,
@@ -123,7 +130,7 @@ const styles = StyleSheet.create({
     card: {
         padding: 16,
         borderRadius: 16,
-        backgroundColor: '#1c1c1e',
+        // backgroundColor handled by theme
         marginBottom: 20,
     },
     levelRow: {
@@ -169,7 +176,7 @@ const styles = StyleSheet.create({
     planItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1c1c1e',
+        // backgroundColor handled by theme -> using cardColor in component if needed, or keeping transparent
         padding: 15,
         borderRadius: 12,
         justifyContent: 'space-between',

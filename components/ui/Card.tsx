@@ -6,7 +6,7 @@ export type CardProps = ViewProps & {
 };
 
 export function Card({ style, variant = 'default', ...otherProps }: CardProps) {
-    const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
+    const backgroundColor = useThemeColor({ light: '#fff', dark: '#283042' }, 'card');
     const borderColor = useThemeColor({ light: '#ccc', dark: '#333' }, 'icon');
 
     return (

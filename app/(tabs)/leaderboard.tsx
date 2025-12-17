@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 type TimeFilter = 'Täglich' | 'Wöchentlich' | 'Monatlich';
 
@@ -18,12 +19,15 @@ const USERS = [
 
 export default function LeaderboardScreen() {
     const [filter, setFilter] = useState<TimeFilter>('Täglich');
+    const backgroundColor = useThemeColor({}, 'background');
+    const cardColor = useThemeColor({}, 'card');
+    const textColor = useThemeColor({}, 'text');
 
     const renderItem = ({ item }: { item: typeof USERS[0] }) => (
-        <View style={[styles.userRow, item.isMe && styles.myRow]}>
+        <View style={[styles.userRow, { backgroundColor: cardColor }, item.isMe && styles.myRow]}>
             <Image source={{ uri: item.avatar }} style={styles.avatar} />
             <View style={styles.userInfo}>
-                <ThemedText type="defaultSemiBold" style={item.isMe ? styles.myText : styles.userName}>
+                <ThemedText type="defaultSemiBold" style={item.isMe ? styles.myText : [styles.userName, { color: textColor }]}>
                     {item.rank}. {item.name}
                 </ThemedText>
                 <ThemedText style={item.isMe ? styles.mySubText : styles.userSubText}>
@@ -37,12 +41,12 @@ export default function LeaderboardScreen() {
     );
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <View style={styles.container}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
+            <View style={[styles.container, { backgroundColor }]}>
                 <ThemedText type="title" style={styles.headerTitle}>Leaderboard</ThemedText>
 
                 {/* Filter Tabs */}
-                <View style={styles.filterContainer}>
+                <View style={[styles.filterContainer, { backgroundColor: cardColor }]}>
                     {(['Täglich', 'Wöchentlich', 'Monatlich'] as TimeFilter[]).map((f) => (
                         <TouchableOpacity
                             key={f}
@@ -78,7 +82,7 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#0a0a0a',
+        // backgroundColor handled by theme
     },
     container: {
         flex: 1,
@@ -91,7 +95,7 @@ const styles = StyleSheet.create({
     },
     filterContainer: {
         flexDirection: 'row',
-        backgroundColor: '#1c1c1e',
+        // backgroundColor handled by theme
         borderRadius: 8,
         padding: 4,
         marginBottom: 20,
@@ -126,7 +130,7 @@ const styles = StyleSheet.create({
     userRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1c1c1e',
+        // backgroundColor handled by theme
         padding: 15,
         borderRadius: 12,
         marginBottom: 10,
@@ -144,7 +148,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     userName: {
-        color: '#fff',
+        // color handled by theme
     },
     myText: {
         color: '#fff', // Or dark if contrast is better, but design shows white on green

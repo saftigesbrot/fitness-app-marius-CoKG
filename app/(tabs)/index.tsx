@@ -8,10 +8,16 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useThemeColor } from '@/hooks/use-theme-color';
+
 export default function HomeScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const iconColor = Colors[colorScheme ?? 'light'].text;
+  const iconColor = Colors[colorScheme ?? 'light'].icon;
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardColor = useThemeColor({}, 'card');
+  const primaryColor = useThemeColor({}, 'primary');
+  const textColor = useThemeColor({}, 'text');
 
   // Mock Data
   const dailyXP = 850;
@@ -20,8 +26,8 @@ export default function HomeScreen() {
   const maxScore = 1000;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor }]} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.userInfo}>
@@ -44,7 +50,7 @@ export default function HomeScreen() {
           <ThemedText type="subtitle">Tagesfortschritt</ThemedText>
           <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
         </View>
-        <ThemedView style={styles.card}>
+        <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
           <View style={styles.statsRow}>
             {/* XP Circle Placeholder */}
             <View style={styles.statItem}>
@@ -60,11 +66,11 @@ export default function HomeScreen() {
 
             {/* Score Circle Placeholder */}
             <View style={styles.statItem}>
-              <View style={[styles.circle, { borderColor: '#3498db' }]}>
-                <IconSymbol name="chart.bar.fill" size={20} color="#3498db" />
+              <View style={[styles.circle, { borderColor: primaryColor }]}>
+                <IconSymbol name="chart.bar.fill" size={20} color={primaryColor} />
               </View>
               <View>
-                <ThemedText type="defaultSemiBold" style={{ color: '#3498db' }}>Trainingsscore</ThemedText>
+                <ThemedText type="defaultSemiBold" style={{ color: primaryColor }}>Trainingsscore</ThemedText>
                 <ThemedText style={styles.statValue}>{trainingScore} / {maxScore}</ThemedText>
               </View>
             </View>
@@ -72,7 +78,7 @@ export default function HomeScreen() {
         </ThemedView>
 
         {/* Start Training Button */}
-        <TouchableOpacity style={styles.mainActionButton}>
+        <TouchableOpacity style={[styles.mainActionButton, { backgroundColor: primaryColor }]}>
           <View>
             <ThemedText type="subtitle" style={styles.actionButtonText}>Training Starten</ThemedText>
             <ThemedText style={styles.actionButtonSubText}>Letzter Plan: Ganzkörper-Push</ThemedText>
@@ -83,16 +89,16 @@ export default function HomeScreen() {
         {/* Quick Access Grid */}
         <ThemedText type="subtitle" style={styles.sectionTitle}>Schnellzugriff</ThemedText>
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.gridItem} onPress={() => router.push('/explore')}>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/explore')}>
             <ThemedText>Übungsbibliothek</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.gridItem}>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]}>
             <ThemedText>Meine Pläne</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.gridItem}>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]}>
             <ThemedText>Neuer Plan</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.gridItem}>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]}>
             <ThemedText>Suche</ThemedText>
           </TouchableOpacity>
         </View>
@@ -102,7 +108,7 @@ export default function HomeScreen() {
           <ThemedText type="subtitle" style={styles.sectionTitle}>Klassen-Leaderboard</ThemedText>
           <ThemedText style={styles.rankText}>Platz 4 von 20</ThemedText>
         </View>
-        <ThemedView style={styles.card}>
+        <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
           <View style={styles.leaderboardRow}>
             <Image source={{ uri: 'https://i.pravatar.cc/150?img=5' }} style={styles.smallAvatar} />
             <View style={{ flex: 1, marginLeft: 10 }}>
@@ -125,7 +131,7 @@ export default function HomeScreen() {
 
         {/* For You Section */}
         <ThemedText type="subtitle" style={styles.sectionTitle}>Für Dich</ThemedText>
-        <ThemedView style={styles.card}>
+        <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
           <View style={styles.row}>
             <IconSymbol name="figure.run" size={24} color="#aaa" />
             <View style={{ marginLeft: 15 }}>
@@ -143,11 +149,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a0a0a', // Dark theme background assumption
+    // backgroundColor handled by theme
   },
   container: {
     padding: 20,
-    backgroundColor: '#0a0a0a',
+    // backgroundColor handled by theme
   },
   header: {
     flexDirection: 'row',
@@ -178,7 +184,7 @@ const styles = StyleSheet.create({
   card: {
     padding: 15,
     borderRadius: 16,
-    backgroundColor: '#1c1c1e', // Dark card
+    // backgroundColor handled by theme
     marginBottom: 20,
   },
   statsRow: {
@@ -203,7 +209,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   mainActionButton: {
-    backgroundColor: '#2D74DA',
+    // backgroundColor handled by theme
     padding: 15,
     borderRadius: 12,
     flexDirection: 'row',
@@ -230,7 +236,7 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: '48%',
-    backgroundColor: '#1c1c1e',
+    // backgroundColor handled by theme
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
@@ -263,7 +269,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2D74DA',
+    backgroundColor: '#397cc0', // primary
     borderRadius: 3,
   },
   row: {

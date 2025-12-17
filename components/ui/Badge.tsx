@@ -8,7 +8,7 @@ export type BadgeProps = {
 };
 
 export function Badge({ label, color, textColor }: BadgeProps) {
-    const backgroundColor = color || useThemeColor({}, 'tint');
+    const backgroundColor = color || useThemeColor({}, 'card');
     const text = textColor || '#fff';
 
     return (
