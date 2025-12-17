@@ -1,112 +1,226 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
 
-export default function TabTwoScreen() {
+export default function ExploreScreen() {
+  const categories = ['Brust', 'Rücken', 'Beine', 'Schultern', 'Arme', 'Core'];
+  const exercises = [
+    { name: 'Bankdrücken', icon: 'dumbbell.fill' },
+    { name: 'Schrägbankdrücken', icon: 'dumbbell.fill' }, // using generic dumbbell if specific not avail
+    { name: 'Fliegende', icon: 'figure.run' }
+  ];
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <ThemedText type="title" style={styles.headerTitle}>Explore</ThemedText>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <IconSymbol name="magnifyingglass" size={20} color="#aaa" style={styles.searchIcon} />
+          <TextInput
+            placeholder="Suche nach Plänen oder Übungen"
+            placeholderTextColor="#aaa"
+            style={styles.searchInput}
+          />
+        </View>
+
+        {/* My Training Plans */}
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Meine Trainingspläne</ThemedText>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+          {/* Card 1 */}
+          <View style={styles.planCard}>
+            <Image source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500' }} style={styles.planImage} />
+            <View style={styles.planOverlay}>
+              <ThemedText type="defaultSemiBold" style={styles.planTitle}>Aktueller Plan:</ThemedText>
+              <ThemedText style={styles.planSubtitle}>Ganzkörper-Push</ThemedText>
+              <ThemedText style={styles.linkText}>(Bearbeiten)</ThemedText>
+            </View>
+          </View>
+          {/* Card 2 */}
+          <View style={styles.planCard}>
+            <Image source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500' }} style={styles.planImage} />
+            <View style={styles.planOverlay}>
+              <ThemedText style={styles.planSubtitle}>Beine & Core</ThemedText>
+              <ThemedText style={styles.planPrivate}>(Privat)</ThemedText>
+              <IconSymbol name="lock.fill" size={16} color="#aaa" style={{ marginTop: 5 }} />
+            </View>
+          </View>
+          {/* New Plan Card */}
+          <View style={[styles.planCard, styles.newPlanCard]}>
+            <View style={styles.plusCircle}>
+              <IconSymbol name="plus" size={30} color="#fff" />
+            </View>
+            <ThemedText style={styles.newPlanText}>Neuer Plan erstellen</ThemedText>
+          </View>
+        </ScrollView>
+
+        {/* Exercise Library */}
+        <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: 20 }]}>Übungsbibliothek</ThemedText>
+        <View style={styles.categoryContainer}>
+          {categories.map((cat) => (
+            <TouchableOpacity key={cat} style={styles.categoryButton}>
+              <ThemedText style={styles.categoryText}>{cat}</ThemedText>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Exercise List */}
+        <View style={styles.exerciseList}>
+          {exercises.map((ex, index) => (
+            <ThemedView key={index} style={styles.exerciseItem}>
+              <View style={styles.exerciseIconBg}>
+                <IconSymbol name="dumbbell.fill" size={20} color="#000" />
+              </View>
+              <ThemedText type="defaultSemiBold" style={{ flex: 1, marginLeft: 15 }}>{ex.name}</ThemedText>
+              <IconSymbol name="chevron.right" size={20} color="#aaa" />
+            </ThemedView>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.createButton}>
+          <ThemedText style={styles.createButtonText}>Eigene Übung erstellen +</ThemedText>
+        </TouchableOpacity>
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0a0a0a',
   },
-  titleContainer: {
+  container: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  headerTitle: {
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  searchContainer: {
     flexDirection: 'row',
-    gap: 8,
+    backgroundColor: '#1c1c1e',
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    color: '#fff',
+    flex: 1,
+  },
+  sectionTitle: {
+    marginBottom: 15,
+  },
+  horizontalScroll: {
+    marginBottom: 10,
+  },
+  planCard: {
+    width: 160,
+    height: 100,
+    borderRadius: 12,
+    marginRight: 15,
+    overflow: 'hidden',
+    backgroundColor: '#333',
+    justifyContent: 'flex-end',
+  },
+  planImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.6,
+  },
+  planOverlay: {
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  planTitle: {
+    color: '#fff',
+    fontSize: 12,
+  },
+  planSubtitle: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  linkText: {
+    color: '#3498db',
+    fontSize: 10,
+  },
+  planPrivate: {
+    color: '#aaa',
+    fontSize: 10,
+  },
+  newPlanCard: {
+    backgroundColor: '#1c1c1e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+    borderStyle: 'dashed', // Dashed doesn't work effectively with View without adjustments, but okay for now
+  },
+  plusCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2D74DA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  newPlanText: {
+    color: '#fff',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  categoryButton: {
+    backgroundColor: '#1c1c1e',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  categoryText: {
+    color: '#fff',
+  },
+  exerciseList: {
+    gap: 10,
+    marginBottom: 25,
+  },
+  exerciseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#1c1c1e',
+    borderRadius: 12,
+  },
+  exerciseIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  createButton: {
+    backgroundColor: '#2D74DA',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });

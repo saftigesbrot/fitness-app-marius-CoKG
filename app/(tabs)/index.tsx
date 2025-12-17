@@ -1,98 +1,274 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const iconColor = Colors[colorScheme ?? 'light'].text;
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Mock Data
+  const dailyXP = 850;
+  const maxXP = 1500;
+  const trainingScore = 1020;
+  const maxScore = 1000;
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.userInfo}>
+            <Image
+              source={{ uri: 'https://i.pravatar.cc/150?img=12' }}
+              style={styles.avatar}
+            />
+            <View>
+              <ThemedText type="title">Hallo, Max!</ThemedText>
+              <ThemedText style={styles.subtitle}>Level 12 • XP {dailyXP}</ThemedText>
+            </View>
+          </View>
+          <TouchableOpacity>
+            <IconSymbol name="bell.fill" size={24} color={iconColor} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Daily Progress Card */}
+        <View style={styles.sectionHeader}>
+          <ThemedText type="subtitle">Tagesfortschritt</ThemedText>
+          <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
+        </View>
+        <ThemedView style={styles.card}>
+          <View style={styles.statsRow}>
+            {/* XP Circle Placeholder */}
+            <View style={styles.statItem}>
+              <View style={[styles.circle, { borderColor: '#4CD964' }]}>
+                <ThemedText type="defaultSemiBold">XP</ThemedText>
+                <ThemedText style={{ fontSize: 10, color: '#aaa' }}>Points</ThemedText>
+              </View>
+              <View>
+                <ThemedText type="defaultSemiBold" style={{ color: '#4CD964' }}>Daily XP</ThemedText>
+                <ThemedText style={styles.statValue}>{dailyXP} / {maxXP}</ThemedText>
+              </View>
+            </View>
+
+            {/* Score Circle Placeholder */}
+            <View style={styles.statItem}>
+              <View style={[styles.circle, { borderColor: '#3498db' }]}>
+                <IconSymbol name="chart.bar.fill" size={20} color="#3498db" />
+              </View>
+              <View>
+                <ThemedText type="defaultSemiBold" style={{ color: '#3498db' }}>Trainingsscore</ThemedText>
+                <ThemedText style={styles.statValue}>{trainingScore} / {maxScore}</ThemedText>
+              </View>
+            </View>
+          </View>
+        </ThemedView>
+
+        {/* Start Training Button */}
+        <TouchableOpacity style={styles.mainActionButton}>
+          <View>
+            <ThemedText type="subtitle" style={styles.actionButtonText}>Training Starten</ThemedText>
+            <ThemedText style={styles.actionButtonSubText}>Letzter Plan: Ganzkörper-Push</ThemedText>
+          </View>
+          <IconSymbol name="pencil" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Quick Access Grid */}
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Schnellzugriff</ThemedText>
+        <View style={styles.grid}>
+          <TouchableOpacity style={styles.gridItem} onPress={() => router.push('/explore')}>
+            <ThemedText>Übungsbibliothek</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.gridItem}>
+            <ThemedText>Meine Pläne</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.gridItem}>
+            <ThemedText>Neuer Plan</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.gridItem}>
+            <ThemedText>Suche</ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        {/* Leaderboard Snippet */}
+        <View style={styles.rowBetween}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>Klassen-Leaderboard</ThemedText>
+          <ThemedText style={styles.rankText}>Platz 4 von 20</ThemedText>
+        </View>
+        <ThemedView style={styles.card}>
+          <View style={styles.leaderboardRow}>
+            <Image source={{ uri: 'https://i.pravatar.cc/150?img=5' }} style={styles.smallAvatar} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <ThemedText>Anna_Fit (1100 Pkt)</ThemedText>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: '90%' }]} />
+              </View>
+            </View>
+          </View>
+          <View style={[styles.leaderboardRow, { marginTop: 15 }]}>
+            <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.smallAvatar} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <ThemedText>Du (1050 Pkt)</ThemedText>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: '80%', backgroundColor: '#4CD964' }]} />
+              </View>
+            </View>
+          </View>
+        </ThemedView>
+
+        {/* For You Section */}
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Für Dich</ThemedText>
+        <ThemedView style={styles.card}>
+          <View style={styles.row}>
+            <IconSymbol name="figure.run" size={24} color="#aaa" />
+            <View style={{ marginLeft: 15 }}>
+              <ThemedText type="defaultSemiBold">Neuer Plan: Beine & Core</ThemedText>
+              <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Verkomment mückt malommiert.</ThemedText>
+            </View>
+          </View>
+        </ThemedView>
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0a0a0a', // Dark theme background assumption
+  },
+  container: {
+    padding: 20,
+    backgroundColor: '#0a0a0a',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  subtitle: {
+    fontSize: 12,
+    color: '#aaa',
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  card: {
+    padding: 15,
+    borderRadius: 16,
+    backgroundColor: '#1c1c1e', // Dark card
+    marginBottom: 20,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  circle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  mainActionButton: {
+    backgroundColor: '#2D74DA',
+    padding: 15,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  actionButtonSubText: {
+    color: '#rgba(255,255,255,0.8)',
+    fontSize: 12,
+  },
+  sectionTitle: {
+    marginBottom: 10,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 25,
+  },
+  gridItem: {
+    width: '48%',
+    backgroundColor: '#1c1c1e',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  rankText: {
+    color: '#aaa',
+    fontSize: 12,
+  },
+  leaderboardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  smallAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: '#333',
+    borderRadius: 3,
+    marginTop: 5,
+    width: '100%',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#2D74DA',
+    borderRadius: 3,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  }
+
 });
