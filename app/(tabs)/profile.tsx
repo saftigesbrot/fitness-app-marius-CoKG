@@ -20,7 +20,8 @@ export default function ProfileScreen() {
                     setUsername(`User #${decoded.user_id}`);
                 }
             } catch (e) {
-                console.error('Failed to decode token:', e);
+                // Token decoding failed, likely invalid token. 
+                // We silently ignore this as the username will just default to 'User'
             }
         }
     }, [session, contextUsername]);

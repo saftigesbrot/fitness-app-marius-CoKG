@@ -107,6 +107,8 @@ export default function SignUp() {
                     autoCapitalize="none"
                     placeholder="Choose a username"
                     placeholderTextColor="#666"
+                    autoComplete="username"
+                    textContentType="username"
                 />
 
                 <Text style={styles.label}>Email</Text>
@@ -118,6 +120,8 @@ export default function SignUp() {
                     keyboardType="email-address"
                     placeholder="Enter your email"
                     placeholderTextColor="#666"
+                    autoComplete="email"
+                    textContentType="emailAddress"
                 />
 
                 <Text style={styles.label}>Password</Text>
@@ -128,6 +132,8 @@ export default function SignUp() {
                     secureTextEntry
                     placeholder="Choose a password"
                     placeholderTextColor="#666"
+                    autoComplete="new-password"
+                    textContentType="newPassword"
                 />
 
                 <TouchableOpacity

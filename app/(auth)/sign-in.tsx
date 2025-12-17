@@ -62,6 +62,8 @@ export default function SignIn() {
                     autoCapitalize="none"
                     placeholder="Enter your username"
                     placeholderTextColor="#666"
+                    autoComplete="username"
+                    textContentType="username"
                 />
 
                 <Text style={styles.label}>Password</Text>
@@ -72,6 +74,8 @@ export default function SignIn() {
                     secureTextEntry
                     placeholder="Enter your password"
                     placeholderTextColor="#666"
+                    autoComplete="current-password"
+                    textContentType="password"
                 />
 
                 <TouchableOpacity
