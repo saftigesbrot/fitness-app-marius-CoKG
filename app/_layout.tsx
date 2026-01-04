@@ -45,6 +45,11 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="exercise/create" options={{ title: 'Übung erstellen' }} />
+        <Stack.Screen name="training/create" options={{ title: 'Neuer Plan' }} />
+        <Stack.Screen name="training/[id]" options={{ title: 'Training' }} />
+        <Stack.Screen name="training/edit/[id]" options={{ title: 'Plan Bearbeiten' }} />
+        <Stack.Screen name="workout/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
