@@ -1,27 +1,98 @@
+
 import { useRouter } from 'expo-router';
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { CircularProgress } from '@/components/ui/CircularProgress';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useSession } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { scoringsService } from '@/services/scorings';
+import { trainingsService } from '@/services/trainings';
 
 export default function HomeScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const iconColor = Colors[colorScheme ?? 'light'].text;
+  const iconColor = Colors[colorScheme ?? 'light'].icon;
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardColor = useThemeColor({}, 'card');
+  const primaryColor = useThemeColor({}, 'primary');
+  const textColor = useThemeColor({}, 'text');
 
-  // Mock Data
-  const dailyXP = 850;
-  const maxXP = 1500;
-  const trainingScore = 1020;
-  const maxScore = 1000;
+  const { username } = useSession();
+  const [levelData, setLevelData] = useState<{ level: number; xp: number } | null>(null);
+  const [currentScore, setCurrentScore] = useState<number>(0);
+  const [recentPlan, setRecentPlan] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const level = await scoringsService.getLevel();
+      setLevelData(level);
+
+      const score = await scoringsService.getScorings('current');
+      if (score && score.value !== undefined) {
+        setCurrentScore(score.value);
+      }
+
+      const plans = await trainingsService.getTrainingPlans();
+      if (Array.isArray(plans) && plans.length > 0) {
+        setRecentPlan(plans[0]);
+      }
+    } catch (error) {
+      console.log('Error loading home data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartTraining = async () => {
+    try {
+      if (recentPlan) {
+        const planId = recentPlan.plan_id || recentPlan.id;
+        console.log("Starting training for plan:", planId);
+        const response = await trainingsService.startTraining(planId);
+        console.log("Start response:", response);
+        // Alert.alert("Training gestartet", `Plan "${recentPlan.name}" wurde gestartet!`);
+        router.push(`/workout/${planId}`);
+      } else {
+        // Fallback fetch if not loaded yet or empty
+        const plans = await trainingsService.getTrainingPlans();
+        if (Array.isArray(plans) && plans.length > 0) {
+          const planToStart = plans[0];
+          const planId = planToStart.plan_id || planToStart.id;
+          const response = await trainingsService.startTraining(planId);
+          // Alert.alert("Training gestartet", `Plan "${planToStart.name}" wurde gestartet!`);
+          router.push(`/workout/${planId}`);
+          setRecentPlan(planToStart);
+        } else {
+          Alert.alert("Keine Pläne", "Du hast noch keine Trainingspläne. Erstelle zuerst einen Plan.");
+          router.push('/explore');
+        }
+      }
+    } catch (error) {
+      Alert.alert("Fehler", "Training konnte nicht gestartet werden.");
+      console.error(error);
+    }
+  };
+
+  // derived or mock values for display limits
+  const maxXP = 2000;
+  const maxScore = 1500;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor }]} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.userInfo}>
@@ -30,8 +101,8 @@ export default function HomeScreen() {
               style={styles.avatar}
             />
             <View>
-              <ThemedText type="title">Hallo, Max!</ThemedText>
-              <ThemedText style={styles.subtitle}>Level 12 • XP {dailyXP}</ThemedText>
+              <ThemedText type="title">Hallo, {username || 'Gast'}!</ThemedText>
+              <ThemedText style={styles.subtitle}>Level {levelData?.level || 1} • XP {levelData?.xp || 0}</ThemedText>
             </View>
           </View>
           <TouchableOpacity>
@@ -44,38 +115,49 @@ export default function HomeScreen() {
           <ThemedText type="subtitle">Tagesfortschritt</ThemedText>
           <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
         </View>
-        <ThemedView style={styles.card}>
+        <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
           <View style={styles.statsRow}>
-            {/* XP Circle Placeholder */}
+            {/* XP Circle */}
             <View style={styles.statItem}>
-              <View style={[styles.circle, { borderColor: '#4CD964' }]}>
-                <ThemedText type="defaultSemiBold">XP</ThemedText>
-                <ThemedText style={{ fontSize: 10, color: '#aaa' }}>Points</ThemedText>
-              </View>
-              <View>
-                <ThemedText type="defaultSemiBold" style={{ color: '#4CD964' }}>Daily XP</ThemedText>
-                <ThemedText style={styles.statValue}>{dailyXP} / {maxXP}</ThemedText>
-              </View>
+              <CircularProgress
+                size={80}
+                strokeWidth={8}
+                progress={(levelData?.xp || 0) / maxXP}
+                color="#4CD964"
+                trackColor="#333"
+              >
+                <View style={{ alignItems: 'center' }}>
+                  <ThemedText type="subtitle" style={{ fontSize: 24, lineHeight: 28 }}>{levelData?.level || 1}</ThemedText>
+                  <ThemedText style={{ fontSize: 10, color: '#aaa' }}>Level</ThemedText>
+                </View>
+              </CircularProgress>
             </View>
 
-            {/* Score Circle Placeholder */}
+            {/* Score Circle */}
             <View style={styles.statItem}>
-              <View style={[styles.circle, { borderColor: '#3498db' }]}>
-                <IconSymbol name="chart.bar.fill" size={20} color="#3498db" />
-              </View>
-              <View>
-                <ThemedText type="defaultSemiBold" style={{ color: '#3498db' }}>Trainingsscore</ThemedText>
-                <ThemedText style={styles.statValue}>{trainingScore} / {maxScore}</ThemedText>
-              </View>
+              <CircularProgress
+                size={80}
+                strokeWidth={8}
+                progress={currentScore / 1000}
+                color={currentScore > 1000 ? '#153E75' : primaryColor}
+                trackColor="#333"
+              >
+                <View style={{ alignItems: 'center' }}>
+                  <ThemedText type="subtitle" style={{ fontSize: 18, lineHeight: 22 }}>{currentScore}</ThemedText>
+                  <ThemedText style={{ fontSize: 10, color: '#aaa' }}>Score</ThemedText>
+                </View>
+              </CircularProgress>
             </View>
           </View>
         </ThemedView>
 
         {/* Start Training Button */}
-        <TouchableOpacity style={styles.mainActionButton}>
+        <TouchableOpacity style={[styles.mainActionButton, { backgroundColor: primaryColor }]} onPress={handleStartTraining}>
           <View>
             <ThemedText type="subtitle" style={styles.actionButtonText}>Training Starten</ThemedText>
-            <ThemedText style={styles.actionButtonSubText}>Letzter Plan: Ganzkörper-Push</ThemedText>
+            <ThemedText style={styles.actionButtonSubText}>
+              {recentPlan ? `Letzter Plan: ${recentPlan.name}` : 'Starte dein erstes Training!'}
+            </ThemedText>
           </View>
           <IconSymbol name="pencil" size={20} color="#fff" />
         </TouchableOpacity>
@@ -83,25 +165,28 @@ export default function HomeScreen() {
         {/* Quick Access Grid */}
         <ThemedText type="subtitle" style={styles.sectionTitle}>Schnellzugriff</ThemedText>
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.gridItem} onPress={() => router.push('/explore')}>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/explore')}>
             <ThemedText>Übungsbibliothek</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.gridItem}>
-            <ThemedText>Meine Pläne</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.gridItem}>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/training/create')}>
             <ThemedText>Neuer Plan</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.gridItem}>
-            <ThemedText>Suche</ThemedText>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/exercise/create')}>
+            <ThemedText>Eigene Übung</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/profile')}>
+            <ThemedText>Profil</ThemedText>
           </TouchableOpacity>
         </View>
 
         {/* Leaderboard Snippet */}
-        <View style={styles.rowBetween}>
+        <TouchableOpacity style={styles.rowBetween} onPress={() => router.push('/leaderboard')}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>Klassen-Leaderboard</ThemedText>
-          <ThemedText style={styles.rankText}>Platz 4 von 20</ThemedText>
-        </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <ThemedText style={styles.rankText}>Platz 4 von 20</ThemedText>
+            <IconSymbol name="chevron.right" size={16} color={Colors.dark.icon} style={{ marginLeft: 5 }} />
+          </View>
+        </TouchableOpacity>
         <ThemedView style={styles.card}>
           <View style={styles.leaderboardRow}>
             <Image source={{ uri: 'https://i.pravatar.cc/150?img=5' }} style={styles.smallAvatar} />
@@ -115,9 +200,9 @@ export default function HomeScreen() {
           <View style={[styles.leaderboardRow, { marginTop: 15 }]}>
             <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.smallAvatar} />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <ThemedText>Du (1050 Pkt)</ThemedText>
+              <ThemedText>{username || 'Du'} ({currentScore} Pkt)</ThemedText>
               <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: '80%', backgroundColor: '#4CD964' }]} />
+                <View style={[styles.progressBarFill, { width: `${Math.min((currentScore / maxScore) * 100, 100)}%`, backgroundColor: '#4CD964' }]} />
               </View>
             </View>
           </View>
@@ -129,25 +214,27 @@ export default function HomeScreen() {
           <View style={styles.row}>
             <IconSymbol name="figure.run" size={24} color="#aaa" />
             <View style={{ marginLeft: 15 }}>
-              <ThemedText type="defaultSemiBold">Neuer Plan: Beine & Core</ThemedText>
-              <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Verkomment mückt malommiert.</ThemedText>
+              <ThemedText type="defaultSemiBold">
+                {recentPlan ? `Vorschlag: ${recentPlan.name}` : 'Erstelle deinen ersten Plan!'}
+              </ThemedText>
+              <ThemedText style={{ color: '#aaa', fontSize: 12 }}>
+                {recentPlan ? 'Bleib dran und verbessere deine Leistung.' : 'Gehe zur Explore-Seite um zu starten.'}
+              </ThemedText>
             </View>
           </View>
         </ThemedView>
 
-      </ScrollView>
-    </SafeAreaView>
+      </ScrollView >
+    </SafeAreaView >
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a0a0a', // Dark theme background assumption
   },
   container: {
     padding: 20,
-    backgroundColor: '#0a0a0a',
   },
   header: {
     flexDirection: 'row',
@@ -178,7 +265,6 @@ const styles = StyleSheet.create({
   card: {
     padding: 15,
     borderRadius: 16,
-    backgroundColor: '#1c1c1e', // Dark card
     marginBottom: 20,
   },
   statsRow: {
@@ -203,7 +289,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   mainActionButton: {
-    backgroundColor: '#2D74DA',
     padding: 15,
     borderRadius: 12,
     flexDirection: 'row',
@@ -230,7 +315,6 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: '48%',
-    backgroundColor: '#1c1c1e',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',

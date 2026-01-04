@@ -7,8 +7,11 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+import { useThemeColor } from '@/hooks/use-theme-color';
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const tabBarBackground = useThemeColor({}, 'card');
 
   return (
     <Tabs
@@ -20,8 +23,13 @@ export default function TabLayout() {
           ios: {
             // Use a transparent background on iOS to verify if it looks like the design
             position: 'absolute',
+            backgroundColor: tabBarBackground,
+            borderTopWidth: 0,
           },
-          default: {},
+          default: {
+            backgroundColor: tabBarBackground,
+            borderTopWidth: 0,
+          },
         }),
       }}>
       <Tabs.Screen

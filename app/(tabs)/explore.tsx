@@ -1,99 +1,232 @@
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { exercisesService } from '@/services/exercises';
+import { trainingsService } from '@/services/trainings';
 
 export default function ExploreScreen() {
-  const categories = ['Brust', 'Rücken', 'Beine', 'Schultern', 'Arme', 'Core'];
-  const exercises = [
-    { name: 'Bankdrücken', icon: 'dumbbell.fill' },
-    { name: 'Schrägbankdrücken', icon: 'dumbbell.fill' }, // using generic dumbbell if specific not avail
-    { name: 'Fliegende', icon: 'figure.run' }
-  ];
+  const [plans, setPlans] = useState<any[]>([]); // User's plans
+  const [exercises, setExercises] = useState<any[]>([]);
+  const [searchResultsPlans, setSearchResultsPlans] = useState<any[]>([]); // Global search results
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardColor = useThemeColor({}, 'card');
+
+
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [fetchedPlans, fetchedExercises, fetchedCategories] = await Promise.all([
+        trainingsService.getTrainingPlans(),
+        exercisesService.searchExercises(searchQuery, selectedCategory ? String(selectedCategory) : undefined),
+        exercisesService.getCategories()
+      ]);
+      if (Array.isArray(fetchedPlans)) setPlans(fetchedPlans);
+      if (Array.isArray(fetchedExercises)) setExercises(fetchedExercises);
+      if (Array.isArray(fetchedCategories)) setCategories(fetchedCategories);
+    } catch (error) {
+      console.log('Error loading explore data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadExercises();
+  }, [searchQuery, selectedCategory]);
+
+  const loadExercises = async () => {
+    try {
+      let categoryName = undefined;
+      if (selectedCategory) {
+        const cat = categories.find(c => (c.category_id || c.id) === selectedCategory);
+        categoryName = cat ? cat.name : undefined;
+      }
+
+      const fetchedExercises = await exercisesService.searchExercises(searchQuery, categoryName);
+      if (Array.isArray(fetchedExercises)) setExercises(fetchedExercises);
+
+      // Also search plans if there is a query
+      if (searchQuery) {
+        const foundPlans = await trainingsService.searchTrainingPlans(searchQuery);
+        if (Array.isArray(foundPlans)) setSearchResultsPlans(foundPlans);
+      } else {
+        setSearchResultsPlans([]);
+      }
+    } catch (error) {
+      console.error("Error loading exercises/plans", error);
+    }
+  }
+
+  const filteredExercises = exercises; // Already filtered by API
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor }]}>
         <ThemedText type="title" style={styles.headerTitle}>Explore</ThemedText>
 
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, { backgroundColor: cardColor }]}>
           <IconSymbol name="magnifyingglass" size={20} color="#aaa" style={styles.searchIcon} />
           <TextInput
             placeholder="Suche nach Plänen oder Übungen"
             placeholderTextColor="#aaa"
             style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
           />
         </View>
+        {/* Search Results: Found Plans */}
+        {/* Search Results: Found Plans or Create New */}
+        {searchQuery && (
+          <View style={{ marginBottom: 20 }}>
+            {searchResultsPlans.length > 0 ? (
+              <>
+                <ThemedText type="subtitle" style={styles.sectionTitle}>Gefundene Pläne</ThemedText>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                  {searchResultsPlans.map((plan) => (
+                    <TouchableOpacity key={plan.plan_id || plan.id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => router.push(`/training/${plan.plan_id || plan.id}`)}>
+                      <Image source={{ uri: `https://source.unsplash.com/random/500x300?gym,${plan.id}` }} style={styles.planImage} />
+                      <View style={styles.planOverlay}>
+                        <ThemedText style={styles.planSubtitle} numberOfLines={1}>{plan.name}</ThemedText>
+                        <ThemedText style={styles.planPrivate} numberOfLines={1}>von {plan.username || 'User ' + plan.user}</ThemedText>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            ) : (
+              <>
+                <ThemedText type="subtitle" style={styles.sectionTitle}>Keine Pläne gefunden</ThemedText>
+                <TouchableOpacity
+                  style={[styles.planCard, styles.newPlanCard, { backgroundColor: cardColor, borderColor: '#333' }]}
+                  onPress={() => router.push('/training/create')}
+                >
+                  <View style={styles.plusCircle}>
+                    <IconSymbol name="plus" size={30} color="#fff" />
+                  </View>
+                  <ThemedText style={styles.newPlanText}>Neuer Plan erstellen</ThemedText>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+        {/* Standard View (No Search) */}
+        {!searchQuery && (
+          <>
+            {/* My Training Plans */}
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Meine Trainingspläne</ThemedText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+              {plans.map((plan) => (
+                <TouchableOpacity key={plan.id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => router.push(`/training/${plan.plan_id || plan.id}`)}>
+                  <Image source={{ uri: `https://source.unsplash.com/random/500x300?gym,${plan.id}` }} style={styles.planImage} />
+                  <View style={styles.planOverlay}>
+                    <ThemedText style={styles.planSubtitle} numberOfLines={1}>{plan.name}</ThemedText>
+                    {!plan.public && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <ThemedText style={styles.planPrivate}>(Privat)</ThemedText>
+                        <IconSymbol name="lock.fill" size={12} color="#aaa" style={{ marginLeft: 4 }} />
+                      </View>
+                    )}
+                    <TouchableOpacity onPress={() => router.push(`/training/edit/${plan.plan_id || plan.id}`)}>
+                      <ThemedText style={styles.linkText}>(Bearbeiten)</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              ))}
 
-        {/* My Training Plans */}
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Meine Trainingspläne</ThemedText>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          {/* Card 1 */}
-          <View style={styles.planCard}>
-            <Image source={{ uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500' }} style={styles.planImage} />
-            <View style={styles.planOverlay}>
-              <ThemedText type="defaultSemiBold" style={styles.planTitle}>Aktueller Plan:</ThemedText>
-              <ThemedText style={styles.planSubtitle}>Ganzkörper-Push</ThemedText>
-              <ThemedText style={styles.linkText}>(Bearbeiten)</ThemedText>
-            </View>
-          </View>
-          {/* Card 2 */}
-          <View style={styles.planCard}>
-            <Image source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500' }} style={styles.planImage} />
-            <View style={styles.planOverlay}>
-              <ThemedText style={styles.planSubtitle}>Beine & Core</ThemedText>
-              <ThemedText style={styles.planPrivate}>(Privat)</ThemedText>
-              <IconSymbol name="lock.fill" size={16} color="#aaa" style={{ marginTop: 5 }} />
-            </View>
-          </View>
-          {/* New Plan Card */}
-          <View style={[styles.planCard, styles.newPlanCard]}>
-            <View style={styles.plusCircle}>
-              <IconSymbol name="plus" size={30} color="#fff" />
-            </View>
-            <ThemedText style={styles.newPlanText}>Neuer Plan erstellen</ThemedText>
-          </View>
-        </ScrollView>
+              {/* New Plan Card */}
+              <TouchableOpacity
+                style={[styles.planCard, styles.newPlanCard, { backgroundColor: cardColor, borderColor: '#333' }]}
+                onPress={() => router.push('/training/create')}
+              >
+                <View style={styles.plusCircle}>
+                  <IconSymbol name="plus" size={30} color="#fff" />
+                </View>
+                <ThemedText style={styles.newPlanText}>Neuer Plan erstellen</ThemedText>
+              </TouchableOpacity>
+            </ScrollView>
 
-        {/* Exercise Library */}
-        <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: 20 }]}>Übungsbibliothek</ThemedText>
-        <View style={styles.categoryContainer}>
-          {categories.map((cat) => (
-            <TouchableOpacity key={cat} style={styles.categoryButton}>
-              <ThemedText style={styles.categoryText}>{cat}</ThemedText>
-            </TouchableOpacity>
-          ))}
-        </View>
+            {/* Exercise Library Categories */}
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: 20 }]}>Übungsbibliothek</ThemedText>
+            <View style={styles.categoryContainer}>
+              {categories.map((cat, index) => {
+                const catId = cat.category_id || cat.id || index;
+                return (
+                  <TouchableOpacity
+                    key={catId}
+                    style={[
+                      styles.categoryButton,
+                      { backgroundColor: selectedCategory === (cat.category_id || cat.id) ? '#2D74DA' : cardColor }
+                    ]}
+                    onPress={() => setSelectedCategory(prev => prev === (cat.category_id || cat.id) ? null : (cat.category_id || cat.id))}
+                  >
+                    <ThemedText style={styles.categoryText}>{cat.name}</ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
+
+        {/* Search Results / Exercise List */}
+        <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: searchQuery ? 0 : 20 }]}>
+          {searchQuery ? 'Gefundene Übungen' : 'Übungen'}
+        </ThemedText>
 
         {/* Exercise List */}
         <View style={styles.exerciseList}>
-          {exercises.map((ex, index) => (
-            <ThemedView key={index} style={styles.exerciseItem}>
-              <View style={styles.exerciseIconBg}>
-                <IconSymbol name="dumbbell.fill" size={20} color="#000" />
-              </View>
-              <ThemedText type="defaultSemiBold" style={{ flex: 1, marginLeft: 15 }}>{ex.name}</ThemedText>
-              <IconSymbol name="chevron.right" size={20} color="#aaa" />
-            </ThemedView>
+          {filteredExercises.map((ex, index) => (
+            <TouchableOpacity key={ex.exercise_id || index} onPress={() => router.push(`/exercise/${ex.exercise_id}`)}>
+              <ThemedView style={[styles.exerciseItem, { backgroundColor: cardColor }]}>
+                <View style={styles.exerciseIconBg}>
+                  <IconSymbol name="dumbbell.fill" size={20} color="#000" />
+                </View>
+                <ThemedText type="defaultSemiBold" style={{ flex: 1, marginLeft: 15 }}>{ex.name}</ThemedText>
+                <IconSymbol name="chevron.right" size={20} color="#aaa" />
+              </ThemedView>
+            </TouchableOpacity>
           ))}
+          {filteredExercises.length === 0 && !loading && (
+            <ThemedText style={{ textAlign: 'center', color: '#aaa', marginTop: 10 }}>Keine Übungen gefunden</ThemedText>
+          )}
         </View>
 
-        <TouchableOpacity style={styles.createButton}>
-          <ThemedText style={styles.createButtonText}>Eigene Übung erstellen +</ThemedText>
-        </TouchableOpacity>
+        {/* Create Button - Only show if NO exercises found during search, or always in default view? 
+            User request: "soll nur angezeigt werden, wenn keine Übung gefunden wurde" 
+            implies if exercises ARE found, don't show it.
+        */}
+        {(!searchQuery || filteredExercises.length === 0) && (
+          <TouchableOpacity style={styles.createButton} onPress={() => router.push('/exercise/create')}>
+            <ThemedText style={styles.createButtonText}>Eigene Übung erstellen +</ThemedText>
+          </TouchableOpacity>
+        )}
 
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
   },
   container: {
     padding: 20,
@@ -105,7 +238,6 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1c1c1e',
     padding: 12,
     borderRadius: 10,
     alignItems: 'center',
@@ -130,7 +262,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 15,
     overflow: 'hidden',
-    backgroundColor: '#333',
     justifyContent: 'flex-end',
   },
   planImage: {
@@ -158,12 +289,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   newPlanCard: {
-    backgroundColor: '#1c1c1e',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
-    borderStyle: 'dashed', // Dashed doesn't work effectively with View without adjustments, but okay for now
+    borderStyle: 'dashed',
   },
   plusCircle: {
     width: 40,
@@ -186,7 +315,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   categoryButton: {
-    backgroundColor: '#1c1c1e',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -202,7 +330,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#1c1c1e',
     borderRadius: 12,
   },
   exerciseIconBg: {
