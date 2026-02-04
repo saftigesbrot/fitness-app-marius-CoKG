@@ -117,14 +117,21 @@ export default function ExerciseDetailScreen() {
                                 {exercise.category_detail?.name || exercise.category || 'Allgemein'}
                             </ThemedText>
                         </View>
-                        {/* Display User only if we have a name (assuming user might be just an ID), or label it */}
-                        {/* If user is just an ID (number), we might want to hide it or verify what it means. 
-                            The prompt said 'user (also der ersteller der Übung)'. If it's an ID, let's prefix it. */}
-                        {(username || exercise.user) && (
-                            <View style={styles.userInfo}>
-                                <IconSymbol name="person.circle" size={16} color="#aaa" />
-                                <ThemedText style={styles.userText}>
-                                    {username || exercise.user}
+
+                        {/* Visibility Badge */}
+                        <View style={[styles.badge, { backgroundColor: exercise.public ? '#2D74DA' : cardColor }]}>
+                            <IconSymbol name={exercise.public ? "lock.open.fill" : "lock.fill"} size={12} color={exercise.public ? "#fff" : textColor} style={{ marginRight: 4 }} />
+                            <ThemedText style={[styles.badgeText, exercise.public && { color: '#fff' }]}>
+                                {exercise.public ? 'Öffentlich' : 'Privat'}
+                            </ThemedText>
+                        </View>
+
+                        {/* Creator Badge (if public and not me, or just available) */}
+                        {exercise.username && (
+                            <View style={[styles.badge, { backgroundColor: cardColor }]}>
+                                <IconSymbol name="person.fill" size={12} color={textColor} style={{ marginRight: 4 }} />
+                                <ThemedText style={styles.badgeText}>
+                                    {exercise.username}
                                 </ThemedText>
                             </View>
                         )}

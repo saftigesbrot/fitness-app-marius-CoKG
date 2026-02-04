@@ -2,7 +2,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -16,6 +16,7 @@ export default function CreateExerciseScreen() {
     const [description, setDescription] = useState('');
     const [categoryId, setCategoryId] = useState<number | null>(null);
     const [imageUri, setImageUri] = useState<string | null>(null);
+    const [isPublic, setIsPublic] = useState(false);
 
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -69,6 +70,7 @@ export default function CreateExerciseScreen() {
             formData.append('name', name);
             formData.append('description', description);
             formData.append('category', String(categoryId));
+            formData.append('public', String(isPublic));
 
             if (imageUri) {
                 const filename = imageUri.split('/').pop() || 'upload.jpg';
@@ -147,6 +149,20 @@ export default function CreateExerciseScreen() {
                     onChangeText={setDescription}
                 />
 
+                {/* Public Switch */}
+                <View style={styles.switchContainer}>
+                    <View>
+                        <ThemedText style={styles.label}>Öffentliche Übung</ThemedText>
+                        <ThemedText style={styles.subtext}>Für andere sichtbar</ThemedText>
+                    </View>
+                    <Switch
+                        value={isPublic}
+                        onValueChange={setIsPublic}
+                        trackColor={{ false: "#767577", true: "#2D74DA" }}
+                        thumbColor={isPublic ? "#fff" : "#f4f3f4"}
+                    />
+                </View>
+
                 {/* Image Picker */}
                 <ThemedText style={styles.label}>Bild</ThemedText>
                 <TouchableOpacity style={[styles.imagePicker, { backgroundColor: cardColor }]} onPress={pickImage}>
@@ -206,6 +222,17 @@ const styles = StyleSheet.create({
     categoryScroll: {
         flexDirection: 'row',
         marginBottom: 20,
+    },
+    switchContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    subtext: {
+        fontSize: 12,
+        color: '#aaa',
+        marginTop: -5,
     },
     categoryChip: {
         paddingHorizontal: 15,

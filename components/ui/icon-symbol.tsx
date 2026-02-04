@@ -37,6 +37,7 @@ const MAPPING = {
   'clock.fill': 'schedule',
   'sparkles': 'auto-awesome',
   'bell.slash': 'notifications-off',
+  'lock.open.fill': 'lock-open',
 } as IconMapping;
 
 /**
