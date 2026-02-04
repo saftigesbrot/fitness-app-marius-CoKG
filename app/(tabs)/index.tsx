@@ -47,9 +47,19 @@ export default function HomeScreen() {
         setCurrentScore(score.value);
       }
 
-      const plans = await trainingsService.getTrainingPlans();
-      if (Array.isArray(plans) && plans.length > 0) {
-        setRecentPlan(plans[0]);
+      // Load last executed plan instead of all plans
+      try {
+        const lastPlan = await trainingsService.getLastExecutedPlan();
+        if (lastPlan) {
+          setRecentPlan(lastPlan);
+        }
+      } catch (error) {
+        console.log('No last executed plan found, trying to get first plan');
+        // Fallback to first plan if no executed plan exists
+        const plans = await trainingsService.getTrainingPlans();
+        if (Array.isArray(plans) && plans.length > 0) {
+          setRecentPlan(plans[0]);
+        }
       }
 
       // Load leaderboard data (uses top scores)
@@ -244,19 +254,32 @@ export default function HomeScreen() {
 
         {/* For You Section */}
         <ThemedText type="subtitle" style={styles.sectionTitle}>Für Dich</ThemedText>
-        <ThemedView style={styles.card}>
-          <View style={styles.row}>
-            <IconSymbol name="figure.run" size={24} color="#aaa" />
-            <View style={{ marginLeft: 15 }}>
-              <ThemedText type="defaultSemiBold">
-                {recentPlan ? `Vorschlag: ${recentPlan.name}` : 'Erstelle deinen ersten Plan!'}
-              </ThemedText>
-              <ThemedText style={{ color: '#aaa', fontSize: 12 }}>
-                {recentPlan ? 'Bleib dran und verbessere deine Leistung.' : 'Gehe zur Explore-Seite um zu starten.'}
-              </ThemedText>
+        <TouchableOpacity
+          onPress={() => {
+            if (recentPlan) {
+              const planId = recentPlan.plan_id || recentPlan.id;
+              router.push(`/training/${planId}`);
+            } else {
+              router.push('/explore');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <ThemedView style={styles.card}>
+            <View style={styles.row}>
+              <IconSymbol name="figure.run" size={24} color="#aaa" />
+              <View style={{ marginLeft: 15, flex: 1 }}>
+                <ThemedText type="defaultSemiBold">
+                  {recentPlan ? `Vorschlag: ${recentPlan.name}` : 'Erstelle deinen ersten Plan!'}
+                </ThemedText>
+                <ThemedText style={{ color: '#aaa', fontSize: 12 }}>
+                  {recentPlan ? 'Bleib dran und verbessere deine Leistung.' : 'Gehe zur Explore-Seite um zu starten.'}
+                </ThemedText>
+              </View>
+              <IconSymbol name="chevron.right" size={20} color="#aaa" />
             </View>
-          </View>
-        </ThemedView>
+          </ThemedView>
+        </TouchableOpacity>
 
       </ScrollView >
     </SafeAreaView >
