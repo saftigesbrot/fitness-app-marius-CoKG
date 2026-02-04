@@ -27,7 +27,9 @@ export default function HomeScreen() {
   const { username } = useSession();
   const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
   const [currentScore, setCurrentScore] = useState<number>(0);
+  const [topScore, setTopScore] = useState<number>(0);
   const [recentPlan, setRecentPlan] = useState<any>(null);
+  const [leaderboardData, setLeaderboardData] = useState<{ myRank: number; total: number; above: any; below: any } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,6 +50,23 @@ export default function HomeScreen() {
       const plans = await trainingsService.getTrainingPlans();
       if (Array.isArray(plans) && plans.length > 0) {
         setRecentPlan(plans[0]);
+      }
+
+      // Load leaderboard data (uses top scores)
+      const leaderboard = await scoringsService.getScorings('leaderboard');
+      if (Array.isArray(leaderboard)) {
+        // Find my rank
+        const myIndex = leaderboard.findIndex(item => item.user__username === username);
+        if (myIndex !== -1) {
+          setLeaderboardData({
+            myRank: myIndex + 1,
+            total: leaderboard.length,
+            above: myIndex > 0 ? leaderboard[myIndex - 1] : null,
+            below: myIndex < leaderboard.length - 1 ? leaderboard[myIndex + 1] : null
+          });
+          // Set top score for leaderboard display
+          setTopScore(leaderboard[myIndex].value);
+        }
       }
     } catch (error) {
       console.log('Error loading home data:', error);
@@ -183,29 +202,44 @@ export default function HomeScreen() {
         <TouchableOpacity style={styles.rowBetween} onPress={() => router.push('/leaderboard')}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>Klassen-Leaderboard</ThemedText>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <ThemedText style={styles.rankText}>Platz 4 von 20</ThemedText>
+            <ThemedText style={styles.rankText}>
+              {leaderboardData ? `Platz ${leaderboardData.myRank} von ${leaderboardData.total}` : 'Lade...'}
+            </ThemedText>
             <IconSymbol name="chevron.right" size={16} color={Colors.dark.icon} style={{ marginLeft: 5 }} />
           </View>
         </TouchableOpacity>
-        <ThemedView style={styles.card}>
-          <View style={styles.leaderboardRow}>
-            <Image source={{ uri: 'https://i.pravatar.cc/150?img=5' }} style={styles.smallAvatar} />
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <ThemedText>Anna_Fit (1100 Pkt)</ThemedText>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: '90%' }]} />
+        <ThemedView style={[styles.card, styles.leaderboardCard]}>
+          {leaderboardData?.above && (
+            <View style={styles.leaderboardRow}>
+              <Image source={{ uri: `https://i.pravatar.cc/150?u=${leaderboardData.above.user__username}` }} style={styles.smallAvatar} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <ThemedText>{leaderboardData.above.user__username} ({leaderboardData.above.value} Pkt)</ThemedText>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, { width: `${Math.min((leaderboardData.above.value / 2000) * 100, 100)}%` }]} />
+                </View>
               </View>
             </View>
-          </View>
-          <View style={[styles.leaderboardRow, { marginTop: 15 }]}>
+          )}
+          <View style={[styles.leaderboardRow, leaderboardData?.above && { marginTop: 15 }]}>
             <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.smallAvatar} />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <ThemedText>{username || 'Du'} ({currentScore} Pkt)</ThemedText>
+              <ThemedText>{username || 'Du'} ({topScore} Pkt)</ThemedText>
               <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${Math.min((currentScore / maxScore) * 100, 100)}%`, backgroundColor: '#4CD964' }]} />
+                <View style={[styles.progressBarFill, { width: `${Math.min((topScore / 2000) * 100, 100)}%`, backgroundColor: '#4CD964' }]} />
               </View>
             </View>
           </View>
+          {leaderboardData?.below && (
+            <View style={[styles.leaderboardRow, { marginTop: 15 }]}>
+              <Image source={{ uri: `https://i.pravatar.cc/150?u=${leaderboardData.below.user__username}` }} style={styles.smallAvatar} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <ThemedText>{leaderboardData.below.user__username} ({leaderboardData.below.value} Pkt)</ThemedText>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, { width: `${Math.min((leaderboardData.below.value / 2000) * 100, 100)}%` }]} />
+                </View>
+              </View>
+            </View>
+          )}
         </ThemedView>
 
         {/* For You Section */}
@@ -267,6 +301,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 20,
   },
+  leaderboardCard: {
+    marginBottom: 15,
+    marginTop: -5,
+  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -305,7 +343,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   sectionTitle: {
-    marginBottom: 10,
+    marginBottom: 5,
   },
   grid: {
     flexDirection: 'row',
