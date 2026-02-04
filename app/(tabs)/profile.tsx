@@ -19,7 +19,7 @@ export default function ProfileScreen() {
     const primaryColor = useThemeColor({}, 'primary');
     const textColor = useThemeColor({}, 'text');
 
-    const [levelData, setLevelData] = useState<{ level: number; xp: number } | null>(null);
+    const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
     const [currentScore, setCurrentScore] = useState<number>(0);
     const [plans, setPlans] = useState<any[]>([]);
 
@@ -62,11 +62,6 @@ export default function ProfileScreen() {
         }
     };
 
-    // Derived level cap (example logic)
-    const maxXP = 2000;
-    const currentXP = levelData?.xp || 0;
-    const progress = Math.min(currentXP / maxXP, 1);
-
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
             <ScrollView contentContainerStyle={styles.container}>
@@ -85,10 +80,10 @@ export default function ProfileScreen() {
                 <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
                     <View style={styles.levelRow}>
                         <ThemedText type="subtitle">Level {levelData?.level || 1}</ThemedText>
-                        <ThemedText style={styles.xpText}>{currentXP} / {maxXP} XP</ThemedText>
+                        <ThemedText style={styles.xpText}>{levelData?.xp_current || 0} / {levelData?.xp_needed || 0} XP</ThemedText>
                     </View>
                     <View style={{ marginVertical: 10 }}>
-                        <ProgressBar progress={progress} color="#4CD964" height={8} />
+                        <ProgressBar progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)} color="#4CD964" height={8} />
                     </View>
                     <ThemedText style={styles.scoreText}>Aktueller Trainingsscore: <ThemedText type="defaultSemiBold">{currentScore}</ThemedText></ThemedText>
                 </ThemedView>

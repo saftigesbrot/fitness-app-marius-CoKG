@@ -25,7 +25,7 @@ export default function HomeScreen() {
   const textColor = useThemeColor({}, 'text');
 
   const { username } = useSession();
-  const [levelData, setLevelData] = useState<{ level: number; xp: number } | null>(null);
+  const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
   const [currentScore, setCurrentScore] = useState<number>(0);
   const [recentPlan, setRecentPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +102,7 @@ export default function HomeScreen() {
             />
             <View>
               <ThemedText type="title">Hallo, {username || 'Gast'}!</ThemedText>
-              <ThemedText style={styles.subtitle}>Level {levelData?.level || 1} • XP {levelData?.xp || 0}</ThemedText>
+              <ThemedText style={styles.subtitle}>Level {levelData?.level || 1} • {levelData?.xp_current || 0}/{levelData?.xp_needed || 0} XP</ThemedText>
             </View>
           </View>
           <TouchableOpacity>
@@ -112,7 +112,7 @@ export default function HomeScreen() {
 
         {/* Daily Progress Card */}
         <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle">Tagesfortschritt</ThemedText>
+          <ThemedText type="subtitle">Fortschritt</ThemedText>
           <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
         </View>
         <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
@@ -122,7 +122,7 @@ export default function HomeScreen() {
               <CircularProgress
                 size={80}
                 strokeWidth={8}
-                progress={(levelData?.xp || 0) / maxXP}
+                progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)}
                 color="#4CD964"
                 trackColor="#333"
               >
