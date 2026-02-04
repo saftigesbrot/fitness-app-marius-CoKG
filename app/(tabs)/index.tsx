@@ -105,7 +105,7 @@ export default function HomeScreen() {
               <ThemedText style={styles.subtitle}>Level {levelData?.level || 1} • {levelData?.xp_current || 0}/{levelData?.xp_needed || 0} XP</ThemedText>
             </View>
           </View>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/notifications')}>
             <IconSymbol name="bell.fill" size={24} color={iconColor} />
           </TouchableOpacity>
         </View>
