@@ -85,9 +85,7 @@ export default function CreateExerciseScreen() {
             }
 
             await exercisesService.createExercise(formData);
-            Alert.alert('Erfolg', 'Übung wurde erstellt!', [
-                { text: 'OK', onPress: () => router.back() }
-            ]);
+            router.replace('/explore');
         } catch (error: any) {
             console.error('Error creating exercise:', error);
             let errorMessage = 'Übung konnte nicht erstellt werden.';

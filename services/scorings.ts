@@ -1,8 +1,8 @@
 import api from './api';
 
 export const scoringsService = {
-    getScorings: async (type?: 'current' | 'top', id?: number) => {
-        const response = await api.get('/scoring-get', { params: { type, id } });
+    getScorings: async (type?: 'current' | 'top' | 'leaderboard' | 'levels', id?: number, timeFrame?: 'daily' | 'weekly' | 'monthly') => {
+        const response = await api.get('/scoring-get', { params: { type, id, time_frame: timeFrame } });
         return response.data;
     },
     getLevel: async () => {

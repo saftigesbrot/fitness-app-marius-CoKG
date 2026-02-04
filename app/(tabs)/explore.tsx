@@ -11,9 +11,9 @@ import { exercisesService } from '@/services/exercises';
 import { trainingsService } from '@/services/trainings';
 
 export default function ExploreScreen() {
-  const [plans, setPlans] = useState<any[]>([]); // User's plans
+  const [plans, setPlans] = useState<any[]>([]);
   const [exercises, setExercises] = useState<any[]>([]);
-  const [searchResultsPlans, setSearchResultsPlans] = useState<any[]>([]); // Global search results
+  const [searchResultsPlans, setSearchResultsPlans] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,9 +24,8 @@ export default function ExploreScreen() {
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
 
-
-
   useEffect(() => {
+
     loadData();
   }, []);
 
@@ -38,6 +37,9 @@ export default function ExploreScreen() {
         exercisesService.searchExercises(searchQuery, selectedCategory ? String(selectedCategory) : undefined),
         exercisesService.getCategories()
       ]);
+
+
+
       if (Array.isArray(fetchedPlans)) setPlans(fetchedPlans);
       if (Array.isArray(fetchedExercises)) setExercises(fetchedExercises);
       if (Array.isArray(fetchedCategories)) setCategories(fetchedCategories);
@@ -60,10 +62,11 @@ export default function ExploreScreen() {
         categoryName = cat ? cat.name : undefined;
       }
 
+
+
       const fetchedExercises = await exercisesService.searchExercises(searchQuery, categoryName);
       if (Array.isArray(fetchedExercises)) setExercises(fetchedExercises);
 
-      // Also search plans if there is a query
       if (searchQuery) {
         const foundPlans = await trainingsService.searchTrainingPlans(searchQuery);
         if (Array.isArray(foundPlans)) setSearchResultsPlans(foundPlans);
@@ -75,14 +78,13 @@ export default function ExploreScreen() {
     }
   }
 
-  const filteredExercises = exercises; // Already filtered by API
+  const filteredExercises = exercises;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor }]}>
         <ThemedText type="title" style={styles.headerTitle}>Explore</ThemedText>
 
-        {/* Search Bar */}
         <View style={[styles.searchContainer, { backgroundColor: cardColor }]}>
           <IconSymbol name="magnifyingglass" size={20} color="#aaa" style={styles.searchIcon} />
           <TextInput
@@ -93,16 +95,15 @@ export default function ExploreScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
-        {/* Search Results: Found Plans */}
-        {/* Search Results: Found Plans or Create New */}
-        {searchQuery && (
+
+        {searchQuery ? (
           <View style={{ marginBottom: 20 }}>
             {searchResultsPlans.length > 0 ? (
               <>
                 <ThemedText type="subtitle" style={styles.sectionTitle}>Gefundene Pläne</ThemedText>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                   {searchResultsPlans.map((plan) => (
-                    <TouchableOpacity key={plan.plan_id || plan.id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => router.push(`/training/${plan.plan_id || plan.id}`)}>
+                    <TouchableOpacity key={plan.plan_id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => router.push(`/training/${plan.plan_id || plan.id}`)}>
                       <Image source={{ uri: `https://source.unsplash.com/random/500x300?gym,${plan.id}` }} style={styles.planImage} />
                       <View style={styles.planOverlay}>
                         <ThemedText style={styles.planSubtitle} numberOfLines={1}>{plan.name}</ThemedText>
@@ -127,15 +128,14 @@ export default function ExploreScreen() {
               </>
             )}
           </View>
-        )}
-        {/* Standard View (No Search) */}
+        ) : null}
+
         {!searchQuery && (
           <>
-            {/* My Training Plans */}
             <ThemedText type="subtitle" style={styles.sectionTitle}>Meine Trainingspläne</ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
               {plans.map((plan) => (
-                <TouchableOpacity key={plan.id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => router.push(`/training/${plan.plan_id || plan.id}`)}>
+                <TouchableOpacity key={plan.plan_id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => router.push(`/training/${plan.plan_id || plan.id}`)}>
                   <Image source={{ uri: `https://source.unsplash.com/random/500x300?gym,${plan.id}` }} style={styles.planImage} />
                   <View style={styles.planOverlay}>
                     <ThemedText style={styles.planSubtitle} numberOfLines={1}>{plan.name}</ThemedText>
@@ -152,7 +152,6 @@ export default function ExploreScreen() {
                 </TouchableOpacity>
               ))}
 
-              {/* New Plan Card */}
               <TouchableOpacity
                 style={[styles.planCard, styles.newPlanCard, { backgroundColor: cardColor, borderColor: '#333' }]}
                 onPress={() => router.push('/training/create')}
@@ -164,11 +163,10 @@ export default function ExploreScreen() {
               </TouchableOpacity>
             </ScrollView>
 
-            {/* Exercise Library Categories */}
-            <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: 20 }]}>Übungsbibliothek</ThemedText>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: 20 }]}>Übungskategorien</ThemedText>
             <View style={styles.categoryContainer}>
               {categories.map((cat, index) => {
-                const catId = cat.category_id || cat.id || index;
+                const catId = cat.id || index;
                 return (
                   <TouchableOpacity
                     key={catId}
@@ -186,15 +184,13 @@ export default function ExploreScreen() {
           </>
         )}
 
-        {/* Search Results / Exercise List */}
         <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: searchQuery ? 0 : 20 }]}>
-          {searchQuery ? 'Gefundene Übungen' : 'Übungen'}
+          {searchQuery ? 'Gefundene Übungen' : 'Übungsbibliothek'}
         </ThemedText>
 
-        {/* Exercise List */}
         <View style={styles.exerciseList}>
-          {filteredExercises.map((ex, index) => (
-            <TouchableOpacity key={ex.exercise_id || index} onPress={() => router.push(`/exercise/${ex.exercise_id}`)}>
+          {filteredExercises.slice(0, selectedCategory ? 10 : 5).map((ex, index) => (
+            <TouchableOpacity key={ex.exercise_id} onPress={() => router.push(`/exercise/${ex.exercise_id}`)}>
               <ThemedView style={[styles.exerciseItem, { backgroundColor: cardColor }]}>
                 <View style={styles.exerciseIconBg}>
                   <IconSymbol name="dumbbell.fill" size={20} color="#000" />
@@ -209,10 +205,6 @@ export default function ExploreScreen() {
           )}
         </View>
 
-        {/* Create Button - Only show if NO exercises found during search, or always in default view? 
-            User request: "soll nur angezeigt werden, wenn keine Übung gefunden wurde" 
-            implies if exercises ARE found, don't show it.
-        */}
         {(!searchQuery || filteredExercises.length === 0) && (
           <TouchableOpacity style={styles.createButton} onPress={() => router.push('/exercise/create')}>
             <ThemedText style={styles.createButtonText}>Eigene Übung erstellen +</ThemedText>
@@ -271,10 +263,6 @@ const styles = StyleSheet.create({
   planOverlay: {
     padding: 10,
     backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  planTitle: {
-    color: '#fff',
-    fontSize: 12,
   },
   planSubtitle: {
     color: '#fff',

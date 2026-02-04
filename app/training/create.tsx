@@ -77,7 +77,7 @@ export default function CreateTrainingPlanScreen() {
 
     const filterExercises = () => {
         if (!searchQuery) {
-            setFilteredExercises(allExercises.slice(0, 20));
+            setFilteredExercises(allExercises.slice(0, 5));
         } else {
             const lower = searchQuery.toLowerCase();
             const filtered = allExercises.filter(ex => ex.name.toLowerCase().includes(lower));

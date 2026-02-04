@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
 
     content: { paddingBottom: 120 },
 
-    imageContainer: { marginHorizontal: 20, borderRadius: 12, overflow: 'hidden', marginBottom: 20, width: width - 40, aspectRatio: 16 / 9 },
+    imageContainer: { marginHorizontal: 20, borderRadius: 12, overflow: 'hidden', marginBottom: 20, height: 250 },
     exerciseImage: { width: '100%', height: '100%' },
 
     infoSection: { paddingHorizontal: 20, marginBottom: 10 },
