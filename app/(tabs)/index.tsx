@@ -138,8 +138,8 @@ export default function HomeScreen() {
               <CircularProgress
                 size={80}
                 strokeWidth={8}
-                progress={currentScore / 1000}
-                color={currentScore > 1000 ? '#153E75' : primaryColor}
+                progress={currentScore / 2000}
+                color={primaryColor}
                 trackColor="#333"
               >
                 <View style={{ alignItems: 'center' }}>
