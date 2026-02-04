@@ -33,7 +33,7 @@ export const trainingsService = {
         const response = await api.post('/training-save', data);
         return response.data;
     },
-    getLastExecutedPlan: async () => {
+    getRecommendations: async () => {
         const response = await api.get('/training-last-executed');
         return response.data;
     },

@@ -114,6 +114,11 @@ export default function TrainingPlanDetailScreen() {
                             <View style={[styles.badge, { backgroundColor: cardColor }]}>
                                 <ThemedText style={styles.badgeText}>{plan.category_detail?.difficulty_level || 'Normal'}</ThemedText>
                             </View>
+                            {plan.public && plan.username && (
+                                <View style={[styles.badge, { backgroundColor: cardColor }]}>
+                                    <ThemedText style={styles.badgeText}>{plan.username}</ThemedText>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
@@ -121,7 +126,7 @@ export default function TrainingPlanDetailScreen() {
                 {/* Info Section */}
                 <View style={styles.section}>
                     <View style={styles.infoRow}>
-                        <IconSymbol name="clock" size={20} color="#aaa" />
+                        <IconSymbol name="clock.fill" size={20} color="#aaa" />
                         <ThemedText style={styles.infoText}>Pausenzeit: {plan.break_time} sek</ThemedText>
                     </View>
                     <View style={styles.infoRow}>

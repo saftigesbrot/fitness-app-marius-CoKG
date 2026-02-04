@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
   const [currentScore, setCurrentScore] = useState<number>(0);
   const [topScore, setTopScore] = useState<number>(0);
-  const [recentPlan, setRecentPlan] = useState<any>(null);
+  const [recommendations, setRecommendations] = useState<{ plans: any[]; exercises: any[] } | null>(null);
   const [leaderboardData, setLeaderboardData] = useState<{ myRank: number; total: number; above: any; below: any } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,19 +47,14 @@ export default function HomeScreen() {
         setCurrentScore(score.value);
       }
 
-      // Load last executed plan instead of all plans
+      // Load recommendations (new public plans and exercises)
       try {
-        const lastPlan = await trainingsService.getLastExecutedPlan();
-        if (lastPlan) {
-          setRecentPlan(lastPlan);
+        const recs = await trainingsService.getRecommendations();
+        if (recs) {
+          setRecommendations(recs);
         }
       } catch (error) {
-        console.log('No last executed plan found, trying to get first plan');
-        // Fallback to first plan if no executed plan exists
-        const plans = await trainingsService.getTrainingPlans();
-        if (Array.isArray(plans) && plans.length > 0) {
-          setRecentPlan(plans[0]);
-        }
+        console.log('Error loading recommendations:', error);
       }
 
       // Load leaderboard data (uses top scores)
@@ -87,33 +82,26 @@ export default function HomeScreen() {
 
   const handleStartTraining = async () => {
     try {
-      if (recentPlan) {
-        const planId = recentPlan.plan_id || recentPlan.id;
+      // Fetch user's plans to start training
+      const plans = await trainingsService.getTrainingPlans();
+      if (Array.isArray(plans) && plans.length > 0) {
+        const planToStart = plans[0];
+        const planId = planToStart.plan_id || planToStart.id;
         console.log("Starting training for plan:", planId);
         const response = await trainingsService.startTraining(planId);
         console.log("Start response:", response);
-        // Alert.alert("Training gestartet", `Plan "${recentPlan.name}" wurde gestartet!`);
         router.push(`/workout/${planId}`);
       } else {
-        // Fallback fetch if not loaded yet or empty
-        const plans = await trainingsService.getTrainingPlans();
-        if (Array.isArray(plans) && plans.length > 0) {
-          const planToStart = plans[0];
-          const planId = planToStart.plan_id || planToStart.id;
-          const response = await trainingsService.startTraining(planId);
-          // Alert.alert("Training gestartet", `Plan "${planToStart.name}" wurde gestartet!`);
-          router.push(`/workout/${planId}`);
-          setRecentPlan(planToStart);
-        } else {
-          Alert.alert("Keine Pläne", "Du hast noch keine Trainingspläne. Erstelle zuerst einen Plan.");
-          router.push('/explore');
-        }
+        Alert.alert("Keine Pläne", "Du hast noch keine Trainingspläne. Erstelle zuerst einen Plan.");
+        router.push('/explore');
       }
     } catch (error) {
       Alert.alert("Fehler", "Training konnte nicht gestartet werden.");
       console.error(error);
     }
   };
+
+
 
   // derived or mock values for display limits
   const maxXP = 2000;
@@ -185,7 +173,7 @@ export default function HomeScreen() {
           <View>
             <ThemedText type="subtitle" style={styles.actionButtonText}>Training Starten</ThemedText>
             <ThemedText style={styles.actionButtonSubText}>
-              {recentPlan ? `Letzter Plan: ${recentPlan.name}` : 'Starte dein erstes Training!'}
+              Starte dein erstes Training!
             </ThemedText>
           </View>
           <IconSymbol name="pencil" size={20} color="#fff" />
@@ -254,32 +242,58 @@ export default function HomeScreen() {
 
         {/* For You Section */}
         <ThemedText type="subtitle" style={styles.sectionTitle}>Für Dich</ThemedText>
-        <TouchableOpacity
-          onPress={() => {
-            if (recentPlan) {
-              const planId = recentPlan.plan_id || recentPlan.id;
-              router.push(`/training/${planId}`);
-            } else {
-              router.push('/explore');
-            }
-          }}
-          activeOpacity={0.7}
-        >
+        {recommendations && (recommendations.plans.length > 0 || recommendations.exercises.length > 0) ? (
+          <View>
+            {recommendations.plans.map((plan) => (
+              <TouchableOpacity
+                key={plan.plan_id}
+                onPress={() => router.push(`/training/${plan.plan_id}`)}
+                activeOpacity={0.7}
+                style={{ marginBottom: 12 }}
+              >
+                <ThemedView style={styles.card}>
+                  <View style={styles.row}>
+                    <IconSymbol name="figure.run" size={24} color={primaryColor} />
+                    <View style={{ marginLeft: 15, flex: 1 }}>
+                      <ThemedText type="defaultSemiBold">{plan.name}</ThemedText>
+                      <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Neuer öffentlicher Trainingsplan</ThemedText>
+                    </View>
+                    <IconSymbol name="chevron.right" size={20} color="#aaa" />
+                  </View>
+                </ThemedView>
+              </TouchableOpacity>
+            ))}
+            {recommendations.exercises.map((exercise) => (
+              <TouchableOpacity
+                key={exercise.exercise_id}
+                onPress={() => router.push(`/exercise/${exercise.exercise_id}`)}
+                activeOpacity={0.7}
+                style={{ marginBottom: 12 }}
+              >
+                <ThemedView style={styles.card}>
+                  <View style={styles.row}>
+                    <IconSymbol name="dumbbell.fill" size={24} color={primaryColor} />
+                    <View style={{ marginLeft: 15, flex: 1 }}>
+                      <ThemedText type="defaultSemiBold">{exercise.name}</ThemedText>
+                      <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Neue öffentliche Übung</ThemedText>
+                    </View>
+                    <IconSymbol name="chevron.right" size={20} color="#aaa" />
+                  </View>
+                </ThemedView>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
           <ThemedView style={styles.card}>
             <View style={styles.row}>
-              <IconSymbol name="figure.run" size={24} color="#aaa" />
+              <IconSymbol name="sparkles" size={24} color="#aaa" />
               <View style={{ marginLeft: 15, flex: 1 }}>
-                <ThemedText type="defaultSemiBold">
-                  {recentPlan ? `Vorschlag: ${recentPlan.name}` : 'Erstelle deinen ersten Plan!'}
-                </ThemedText>
-                <ThemedText style={{ color: '#aaa', fontSize: 12 }}>
-                  {recentPlan ? 'Bleib dran und verbessere deine Leistung.' : 'Gehe zur Explore-Seite um zu starten.'}
-                </ThemedText>
+                <ThemedText type="defaultSemiBold">Keine neuen Empfehlungen</ThemedText>
+                <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Schau später wieder vorbei!</ThemedText>
               </View>
-              <IconSymbol name="chevron.right" size={20} color="#aaa" />
             </View>
           </ThemedView>
-        </TouchableOpacity>
+        )}
 
       </ScrollView >
     </SafeAreaView >
