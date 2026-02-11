@@ -1,50 +1,90 @@
-# Welcome to your Expo app 👋
+# Fitness App Frontend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Dies ist das Frontend für die FitnessApp, entwickelt mit **React Native** und **Expo**. Es bietet eine plattformübergreifende Benutzeroberfläche (Web, iOS, Android) für das Trainingstagebuch.
 
-## Get started
+## Voraussetzungen
 
-1. Install dependencies
+Stelle sicher, dass du folgende Tools installiert hast:
 
-   ```bash
-   npm install
-   ```
+- **Node.js** (LTS Version empfohlen): [Node.js herunterladen](https://nodejs.org/)
+- **npm** (wird mit Node.js installiert) oder **yarn**
+- **Expo Go App** (Optional: auf deinem Smartphone, wenn du darauf testen möchtest)
 
-2. Start the app
+## Installation
 
-   ```bash
-   npx expo start
-   ```
+Folge diesen Schritten, um das Frontend lokal einzurichten.
 
-In the output, you'll find options to open the app in a
+### 1. Repository klonen und in das Verzeichnis wechseln
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Öffne dein Terminal und navigiere in den Projektordner:
 
 ```bash
-npm run reset-project
+cd fitnessapp
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Abhängigkeiten installieren
 
-## Learn more
+Lade alle benötigten Node-Module herunter:
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## App starten
 
-## Join the community
+### Standard-Start (für Entwicklung)
 
-Join our community of developers creating universal apps.
+Um den Entwicklungsserver zu starten, führe einfach aus:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npx expo start
+```
+*Dies öffnet ein Menü im Terminal, über das du wählen kannst, wo du die App öffnen möchtest (w = Web, a = Android, i = iOS).*
+
+### Starten im Web-Browser
+
+Wenn du direkt im Browser entwickeln möchtest:
+
+```bash
+npx expo start --web
+```
+
+### Troubleshooting / Cache leeren
+
+Falls du Probleme mit dem Start hast oder Änderungen nicht sichtbar werden, hilft oft das Leeren des Caches:
+
+**Mac / Linux (mit Administratorrechten):**
+```bash
+sudo npx expo start --web --clear
+```
+
+**Windows (PowerShell als Administrator):**
+```powershell
+npx expo start --web --clear
+```
+
+## Projektstruktur
+
+Das Frontend ist modular mit Expo Router aufgebaut:
+
+- **`app/`**: Enthält die Seiten (Screens) und das Routing der App.
+    - **`(auth)/`**: Login- und Registrierungs-Screens.
+    - **`(tabs)/`**: Hauptnavigation (Dashboard, Training, Profil).
+    - **`exercise/`**: Screens für Übungsdetails und Erstellung.
+    - **`training/`**: Trainingspläne und aktive Sessions.
+- **`components/`**: Wiederverwendbare UI-Elemente (Buttons, Listen, Icons).
+- **`services/`**: API-Kommunikation mit dem Backend (`axios`-Instanzen).
+- **`assets/`**: Bilder und Schriftarten.
+- **`constants/`**: Globale Konstanten (Farben, Konfigurationen).
+
+## Verbindung zum Backend
+
+Das Frontend erwartet, dass das Backend lokal unter `http://127.0.0.1:8000` (bzw. `localhost`) läuft.
+Stelle sicher, dass du das Backend startest, **bevor** du dich im Frontend anmeldest.
+
+## Features
+
+- **Dashboard**: Übersicht über deine Statistiken und aktuellen Fortschritt.
+- **Training**: Erstelle und starte Trainingspläne, tracke deine Sätze und Gewichte.
+- **Übungen**: Durchsuche eine Datenbank von Übungen oder erstelle eigene mit Bildern.
+- **Profil**: Verwalte deine persönlichen Daten und Einstellungen.
