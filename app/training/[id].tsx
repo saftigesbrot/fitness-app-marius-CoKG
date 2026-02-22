@@ -11,6 +11,7 @@ import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
 import { useTrainingPlan } from '@/hooks/useTrainingPlans';
 import { useExercises } from '@/hooks/useExercises';
+import { useOfflineMutation } from '@/context/OfflineMutationContext';
 
 export default function TrainingPlanDetailScreen() {
     const { id } = useLocalSearchParams();
@@ -20,6 +21,7 @@ export default function TrainingPlanDetailScreen() {
     const [loading, setLoading] = useState(true);
     const { data: planData, isLoading: isLoadingPlan } = useTrainingPlan(Number(id));
     const { data: allExercisesData } = useExercises('', '');
+    const { isOnline } = useOfflineMutation();
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
@@ -54,11 +56,19 @@ export default function TrainingPlanDetailScreen() {
     const handleStartTraining = async () => {
         if (!plan) return;
         try {
+            if (!isOnline) {
+                router.push(`/workout/${plan.plan_id}`);
+                return;
+            }
             // Call API to start training session
-            const result = await trainingsService.startTraining(plan.plan_id);
+            await trainingsService.startTraining(plan.plan_id);
             router.push(`/workout/${plan.plan_id}`);
-        } catch (e) {
-            console.error("Failed to start training", e);
+        } catch (error: any) {
+            console.error("Failed to start training", error);
+            if (error.isAxiosError && !error.response) {
+                // Network error, proceed offline
+                router.push(`/workout/${plan.plan_id}`);
+            }
         }
     };
 
