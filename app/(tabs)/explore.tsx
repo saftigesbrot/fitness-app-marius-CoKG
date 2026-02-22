@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -29,19 +29,28 @@ export default function ExploreScreen() {
     return cat ? cat.name : undefined;
   })();
 
-  // Filtered/Searched data hooks
-  const { data: exercises = [], isLoading: isLoadingExercises } = useExercises(
-    searchQuery || undefined,
-    selectedCategoryName
-  );
+  // Filtered/Searched data locally for offline support
+  const { data: allExercises = [], isLoading: isLoadingExercises } = useExercises('', '');
 
-  const { data: searchResultsPlans = [], isLoading: isLoadingSearchPlans } = useTrainingPlans(
-    searchQuery
-  );
+  const filteredExercises = useMemo(() => {
+    let result = allExercises;
+    if (selectedCategoryName) {
+      result = result.filter((ex: any) => ex.category_detail?.name === selectedCategoryName || ex.category === selectedCategoryName);
+    }
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      result = result.filter((ex: any) => ex.name.toLowerCase().includes(lowerQuery));
+    }
+    return result;
+  }, [allExercises, selectedCategoryName, searchQuery]);
 
-  const loading = isLoadingPlans || isLoadingCategories || isLoadingExercises || isLoadingSearchPlans;
+  const searchResultsPlans = useMemo(() => {
+    if (!searchQuery) return [];
+    const lowerQuery = searchQuery.toLowerCase();
+    return plans.filter((plan: any) => plan.name.toLowerCase().includes(lowerQuery));
+  }, [plans, searchQuery]);
 
-  const filteredExercises = exercises;
+  const loading = isLoadingPlans || isLoadingCategories || isLoadingExercises;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
@@ -65,7 +74,7 @@ export default function ExploreScreen() {
               <>
                 <ThemedText type="subtitle" style={styles.sectionTitle}>Gefundene Pläne</ThemedText>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-                  {searchResultsPlans.map((plan) => (
+                  {searchResultsPlans.map((plan: any) => (
                     <TouchableOpacity key={plan.plan_id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => router.push(`/training/${plan.plan_id || plan.id}`)}>
                       <Image source={{ uri: `https://source.unsplash.com/random/500x300?gym,${plan.id}` }} style={styles.planImage} />
                       <View style={styles.planOverlay}>
@@ -97,7 +106,7 @@ export default function ExploreScreen() {
           <>
             <ThemedText type="subtitle" style={styles.sectionTitle}>Meine Trainingspläne</ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-              {plans.map((plan) => (
+              {plans.map((plan: any) => (
                 <TouchableOpacity key={plan.plan_id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => router.push(`/training/${plan.plan_id || plan.id}`)}>
                   <Image source={{ uri: `https://source.unsplash.com/random/500x300?gym,${plan.id}` }} style={styles.planImage} />
                   <View style={styles.planOverlay}>
@@ -128,7 +137,7 @@ export default function ExploreScreen() {
 
             <ThemedText type="subtitle" style={[styles.sectionTitle, { marginTop: 20 }]}>Übungskategorien</ThemedText>
             <View style={styles.categoryContainer}>
-              {categories.map((cat, index) => {
+              {categories.map((cat: any, index: number) => {
                 const catId = cat.id || index;
                 return (
                   <TouchableOpacity
@@ -152,7 +161,7 @@ export default function ExploreScreen() {
         </ThemedText>
 
         <View style={styles.exerciseList}>
-          {filteredExercises.slice(0, selectedCategory ? 10 : 5).map((ex, index) => (
+          {filteredExercises.slice(0, selectedCategory ? 10 : 5).map((ex: any, index: number) => (
             <TouchableOpacity key={ex.exercise_id} onPress={() => router.push(`/exercise/${ex.exercise_id}`)}>
               <ThemedView style={[styles.exerciseItem, { backgroundColor: cardColor }]}>
                 <View style={styles.exerciseIconBg}>

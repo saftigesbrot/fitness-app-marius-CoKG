@@ -8,8 +8,9 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
-import { exercisesService } from '@/services/exercises';
 import { API_URL } from '@/services/api';
+import { useTrainingPlan } from '@/hooks/useTrainingPlans';
+import { useExercises } from '@/hooks/useExercises';
 
 export default function TrainingPlanDetailScreen() {
     const { id } = useLocalSearchParams();
@@ -17,54 +18,38 @@ export default function TrainingPlanDetailScreen() {
     const [plan, setPlan] = useState<any>(null);
     const [exercises, setExercises] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { data: planData, isLoading: isLoadingPlan } = useTrainingPlan(Number(id));
+    const { data: allExercisesData } = useExercises('', '');
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
     const textColor = useThemeColor({}, 'text');
 
     useEffect(() => {
-        if (id) {
-            loadPlan(Number(id));
-        }
-    }, [id]);
-
-    const loadPlan = async (planId: number) => {
-        try {
-            setLoading(true);
-            const planData = await trainingsService.getTrainingPlans(planId);
+        if (planData) {
             setPlan(planData);
+            setLoading(false);
+            if (planData.order && Array.isArray(planData.order)) {
+                if (allExercisesData && Array.isArray(allExercisesData)) {
+                    // Try to map from cache first
+                    const mappedExercises = planData.order.map((exId: number) => {
+                        return allExercisesData.find(ex => ex.exercise_id === exId || ex.id === exId);
+                    }).filter(Boolean);
 
-            if (planData && planData.order && Array.isArray(planData.order)) {
-                loadExercises(planData.order);
+                    if (mappedExercises.length > 0) {
+                        setExercises(mappedExercises);
+                    }
+                }
+
+                // If the plan has full exercise objects in 'exercises' field, use them
+                if (planData.exercises && Array.isArray(planData.exercises) && planData.exercises.length > 0 && exercises.length === 0) {
+                    setExercises(planData.exercises);
+                }
             }
-        } catch (error) {
-            console.error('Error loading plan:', error);
-        } finally {
+        } else if (!isLoadingPlan) {
             setLoading(false);
         }
-    };
-
-    const loadExercises = async (exerciseIds: number[]) => {
-        try {
-            // Fetch all exercises in parallel
-            // Note: In a real app, a batch endpoint would be better
-            const promises = exerciseIds.map(id => exercisesService.getExercise(id));
-            const results = await Promise.all(promises);
-
-            // Filter out any potential nulls/failures if needed
-            // The service returns the exercise object directly or a list if checking exact ID match logic
-            // Based on previous analysis, getExercise returns the object or list. 
-            // Let's normalize just in case.
-            const validExercises = results.map(res => {
-                if (Array.isArray(res)) return res[0];
-                return res;
-            }).filter(Boolean); // remove any nulls
-
-            setExercises(validExercises);
-        } catch (error) {
-            console.error('Error loading exercises for plan:', error);
-        }
-    };
+    }, [planData, isLoadingPlan, allExercisesData]);
 
     const handleStartTraining = async () => {
         if (!plan) return;

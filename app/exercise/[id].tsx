@@ -7,54 +7,39 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { API_URL } from '@/services/api';
-import { exercisesService } from '@/services/exercises';
-
+import { useExercise } from '@/hooks/useExercises';
 import { usersService } from '@/services/users';
 
 export default function ExerciseDetailScreen() {
     const { id } = useLocalSearchParams();
-    const [exercise, setExercise] = useState<any>(null);
     const [username, setUsername] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { data: exerciseData, isLoading } = useExercise(Number(id));
+    const [exercise, setExercise] = useState<any>(null);
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
     const textColor = useThemeColor({}, 'text');
 
     useEffect(() => {
-        if (id) {
-            loadExercise(Number(id));
-        }
-    }, [id]);
-
-    const loadExercise = async (exerciseId: number) => {
-        try {
-            setLoading(true);
-            const data = await exercisesService.getExercise(exerciseId);
-
-            let exerciseData = data;
+        if (exerciseData) {
+            let data = exerciseData;
             // Handle array response if the API returns a list
-            if (Array.isArray(data) && data.length > 0) {
-                exerciseData = data[0];
-            } else if (Array.isArray(data)) {
+            if (Array.isArray(exerciseData) && exerciseData.length > 0) {
+                data = exerciseData[0];
+            } else if (Array.isArray(exerciseData)) {
                 // Empty array
-                exerciseData = null;
+                data = null;
             }
 
-            setExercise(exerciseData);
+            setExercise(data);
 
-            if (exerciseData && typeof exerciseData.user === 'number') {
-                fetchUsername(exerciseData.user);
-            } else if (exerciseData && exerciseData.user) {
-                setUsername(String(exerciseData.user));
+            if (data && typeof data.user === 'number') {
+                fetchUsername(data.user);
+            } else if (data && data.user) {
+                setUsername(String(data.user));
             }
-
-        } catch (error) {
-            console.error('Error loading exercise:', error);
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [exerciseData]);
 
     const fetchUsername = async (userId: number) => {
         try {
@@ -70,7 +55,7 @@ export default function ExerciseDetailScreen() {
         }
     };
 
-    if (loading) {
+    if (isLoading && !exercise) {
         return (
             <View style={[styles.loadingContainer, { backgroundColor }]}>
                 <ActivityIndicator size="large" color={textColor} />
@@ -78,8 +63,7 @@ export default function ExerciseDetailScreen() {
         );
     }
 
-
-    if (!exercise) {
+    if (!exercise && !isLoading) {
         return (
             <View style={[styles.loadingContainer, { backgroundColor }]}>
                 <ThemedText>Exercise not found.</ThemedText>

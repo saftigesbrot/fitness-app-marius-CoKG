@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { exercisesService } from '@/services/exercises';
 
 export const EXERCISE_KEYS = {
@@ -19,11 +19,17 @@ export function useExercises(search?: string, category?: string) {
 }
 
 export function useExercise(id: number) {
+    const queryClient = useQueryClient();
     return useQuery({
         queryKey: EXERCISE_KEYS.detail(id),
         queryFn: () => exercisesService.getExercise(id),
         enabled: !!id,
         staleTime: 1000 * 60 * 60 * 24, // 24 hours
+        initialData: () => {
+            // Try to find the exercise in the all-exercises list cache
+            const listData = queryClient.getQueryData<any[]>(EXERCISE_KEYS.list(JSON.stringify({ search: '', category: '' })));
+            return listData?.find(ex => (ex.exercise_id === id || ex.id === id));
+        },
     });
 }
 

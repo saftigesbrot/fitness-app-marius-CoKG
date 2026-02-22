@@ -17,13 +17,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { exercisesService } from '@/services/exercises';
 import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
 import { useOfflineMutation } from '@/context/OfflineMutationContext';
+import { useExercises } from '@/hooks/useExercises';
+import { useTrainingCategories, TRAINING_KEYS } from '@/hooks/useTrainingPlans';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function CreateTrainingPlanScreen() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const [name, setName] = useState('');
     const [breakTime, setBreakTime] = useState('60');
     const [isPublic, setIsPublic] = useState(false);
@@ -35,46 +38,35 @@ export default function CreateTrainingPlanScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedExercises, setSelectedExercises] = useState<any[]>([]);
 
-    const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
     const textColor = useThemeColor({}, 'text');
 
+    const { data: catsData, isLoading: isLoadingCats } = useTrainingCategories();
+    const { data: exsData, isLoading: isLoadingExs } = useExercises('', '');
+
     useEffect(() => {
-        loadData();
-    }, []);
+        if (catsData && Array.isArray(catsData)) {
+            setCategories(catsData);
+            if (!selectedCategory && catsData.length > 0) {
+                setSelectedCategory(catsData[0].category_id || catsData[0].id);
+            }
+        }
+    }, [catsData]);
+
+    useEffect(() => {
+        if (exsData && Array.isArray(exsData)) {
+            setAllExercises(exsData);
+        }
+    }, [exsData]);
+
+    const loading = isLoadingCats || isLoadingExs;
 
     useEffect(() => {
         filterExercises();
     }, [searchQuery, allExercises]);
-
-    const loadData = async () => {
-        setLoading(true);
-        try {
-            const [cats, exs] = await Promise.all([
-                trainingsService.getTrainingCategories(),
-                exercisesService.searchExercises('') // fetch all initially
-            ]);
-
-            if (Array.isArray(cats)) setCategories(cats);
-            if (Array.isArray(exs)) {
-                setAllExercises(exs);
-            }
-
-            // Default category if available
-            if (Array.isArray(cats) && cats.length > 0) {
-                setSelectedCategory(cats[0].category_id || cats[0].id);
-            }
-
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Error', 'Failed to load data');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const filterExercises = () => {
         if (!searchQuery) {
@@ -121,18 +113,19 @@ export default function CreateTrainingPlanScreen() {
             return;
         }
 
+        const exerciseIds = selectedExercises.map(ex => ex.exercise_id);
+
+        const payload = {
+            name,
+            description: 'Created via App', // Optional field
+            category: selectedCategory,
+            public: isPublic,
+            break_time: parseInt(breakTime) || 60,
+            order: exerciseIds
+        };
+
         setSubmitting(true);
         try {
-            const exerciseIds = selectedExercises.map(ex => ex.exercise_id);
-
-            const payload = {
-                name,
-                description: 'Created via App', // Optional field
-                category: selectedCategory,
-                public: isPublic,
-                break_time: parseInt(breakTime) || 60,
-                order: exerciseIds
-            };
 
             if (!isOnline) {
                 addToQueue('CREATE_TRAINING_PLAN', payload);
@@ -142,12 +135,22 @@ export default function CreateTrainingPlanScreen() {
             }
 
             await trainingsService.createTrainingPlan(payload);
+
+            // Invalidate cache to refetch the new list
+            await queryClient.invalidateQueries({ queryKey: TRAINING_KEYS.all });
+
             // Redirect to Explore
             router.dismissAll();
             router.push('/(tabs)/explore');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Create error:', error);
-            Alert.alert('Error', 'Failed to create plan');
+            if (error.isAxiosError && !error.response) {
+                addToQueue('CREATE_TRAINING_PLAN', payload);
+                router.dismissAll();
+                router.push('/(tabs)/explore');
+            } else {
+                Alert.alert('Error', 'Failed to create plan');
+            }
         } finally {
             setSubmitting(false);
         }

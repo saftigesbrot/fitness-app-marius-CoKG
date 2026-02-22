@@ -102,7 +102,7 @@ export default function ProfileScreen() {
                 {/* Public Plans (Dynamic) */}
                 <ThemedText type="subtitle" style={styles.sectionTitle}>Deine Trainingspläne</ThemedText>
                 <View style={styles.planList}>
-                    {plans.map((plan, index) => (
+                    {plans.map((plan: any, index: number) => (
                         <TouchableOpacity key={plan.id || index} style={[styles.planItem, { backgroundColor: cardColor }]}>
                             <IconSymbol name="dumbbell.fill" size={20} color={textColor} />
                             <ThemedText style={styles.planName}>{plan.name}</ThemedText>

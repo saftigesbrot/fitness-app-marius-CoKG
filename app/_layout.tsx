@@ -66,6 +66,8 @@ import { TRAINING_KEYS } from '@/hooks/useTrainingPlans';
 import { usersService } from '@/services/users';
 import { scoringsService } from '@/services/scorings';
 import { trainingsService } from '@/services/trainings';
+import { exercisesService } from '@/services/exercises';
+import { EXERCISE_KEYS } from '@/hooks/useExercises';
 
 function DataPrefetcher() {
   const { session } = useSession();
@@ -89,14 +91,24 @@ function DataPrefetcher() {
         queryFn: () => scoringsService.getScorings('leaderboard'),
       });
 
-      // Prefetch training plans and recommendations
+      // Prefetch user's training plans and recommendations
       queryClient.prefetchQuery({
-        queryKey: TRAINING_KEYS.list(''),
-        queryFn: () => trainingsService.searchTrainingPlans(''),
+        queryKey: TRAINING_KEYS.lists(),
+        queryFn: () => trainingsService.getTrainingPlans(),
       });
       queryClient.prefetchQuery({
         queryKey: TRAINING_KEYS.recommendations,
         queryFn: trainingsService.getRecommendations,
+      });
+
+      // Prefetch all exercises and categories for offline creation/editing
+      queryClient.prefetchQuery({
+        queryKey: EXERCISE_KEYS.list(JSON.stringify({ search: '', category: '' })),
+        queryFn: () => exercisesService.searchExercises('', ''),
+      });
+      queryClient.prefetchQuery({
+        queryKey: EXERCISE_KEYS.categories,
+        queryFn: exercisesService.getCategories,
       });
     }
   }, [session, isOnline, queryClient]);

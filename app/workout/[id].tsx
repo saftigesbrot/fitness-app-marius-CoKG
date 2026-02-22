@@ -19,6 +19,8 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
 import { useOfflineMutation } from '@/context/OfflineMutationContext';
+import { useTrainingPlan } from '@/hooks/useTrainingPlans';
+import { useExercises } from '@/hooks/useExercises';
 
 const { width } = Dimensions.get('window');
 
@@ -56,10 +58,6 @@ export default function TrainingSessionScreen() {
     const intervalRef = useRef<NodeJS.Timeout | number | null>(null);
 
     useEffect(() => {
-        loadSession();
-    }, [id]);
-
-    useEffect(() => {
         if (isActive) {
             intervalRef.current = setInterval(() => {
                 setSeconds(prev => prev + 1);
@@ -72,28 +70,38 @@ export default function TrainingSessionScreen() {
         };
     }, [isActive]);
 
-    const loadSession = async () => {
-        try {
-            setLoading(true);
-            const planData = await trainingsService.getTrainingPlans(Number(id));
-            setPlan(planData);
+    const { data: planData, isLoading: isLoadingPlan } = useTrainingPlan(Number(id));
+    const { data: allExercisesData } = useExercises('', '');
 
-            if (planData && Array.isArray(planData.exercises)) {
+    useEffect(() => {
+        if (planData) {
+            setPlan(planData);
+            setLoading(false);
+
+            if (planData.order && Array.isArray(planData.order)) {
+                if (allExercisesData && Array.isArray(allExercisesData)) {
+                    // Map from cache
+                    const mappedExercises = planData.order.map((exId: number) => {
+                        return allExercisesData.find(ex => ex.exercise_id === exId || ex.id === exId);
+                    }).filter(Boolean);
+
+                    if (mappedExercises.length > 0) {
+                        setExercises(mappedExercises);
+                    }
+                }
+
+                if (planData.exercises && Array.isArray(planData.exercises) && planData.exercises.length > 0 && exercises.length === 0) {
+                    setExercises(planData.exercises);
+                }
+            } else if (Array.isArray(planData.exercises)) {
                 setExercises(planData.exercises);
-            } else if (planData && Array.isArray(planData.order)) {
-                // Fallback if exercises array is missing but order IDs present, 
-                // ideally backend provides full objects now.
-                // For safety, let's assume exercises are populated or needed to be fetched.
-                // Given previous tasks, we know `exercises` field exists.
             }
+
             setIsActive(true); // Start timer automatically
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Error', 'Failed to load training session');
-        } finally {
+        } else if (!isLoadingPlan) {
             setLoading(false);
         }
-    };
+    }, [planData, isLoadingPlan, allExercisesData]);
 
     const formatTime = (totalSeconds: number) => {
         const mins = Math.floor(totalSeconds / 60);
@@ -129,38 +137,39 @@ export default function TrainingSessionScreen() {
     const { isOnline, addToQueue } = useOfflineMutation();
 
     const finishTraining = async () => {
+        // Construct Execution Data
+        const exercisesOrder = exercises.map(ex => ex.exercise_id);
+        const setsData: { exercise_id: any; weight: string; reps: string; duration: number; }[] = [];
+
+        // Iterate through setsLog
+        // setsLog is { [exerciseIndex]: [ { weight, reps, completed } ] }
+        Object.keys(setsLog).forEach(indexKey => {
+            const index = Number(indexKey);
+            const exercise = exercises[index];
+            if (!exercise) return;
+
+            const sets = setsLog[index];
+            sets.forEach(set => {
+                if (set.completed) {
+                    setsData.push({
+                        exercise_id: exercise.exercise_id,
+                        weight: set.weight,
+                        reps: set.reps,
+                        duration: 0 // Duration tracking not implemented yet per set
+                    });
+                }
+            });
+        });
+
+        const payload = {
+            plan_id: Number(id),
+            exercises_order: exercisesOrder,
+            sets: setsData
+        };
+
         try {
             setLoading(true);
 
-            // Construct Execution Data
-            const exercisesOrder = exercises.map(ex => ex.exercise_id);
-            const setsData: { exercise_id: any; weight: string; reps: string; duration: number; }[] = [];
-
-            // Iterate through setsLog
-            // setsLog is { [exerciseIndex]: [ { weight, reps, completed } ] }
-            Object.keys(setsLog).forEach(indexKey => {
-                const index = Number(indexKey);
-                const exercise = exercises[index];
-                if (!exercise) return;
-
-                const sets = setsLog[index];
-                sets.forEach(set => {
-                    if (set.completed) {
-                        setsData.push({
-                            exercise_id: exercise.exercise_id,
-                            weight: set.weight,
-                            reps: set.reps,
-                            duration: 0 // Duration tracking not implemented yet per set
-                        });
-                    }
-                });
-            });
-
-            const payload = {
-                plan_id: Number(id),
-                exercises_order: exercisesOrder,
-                sets: setsData
-            };
             console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
             if (!isOnline) {
@@ -185,9 +194,17 @@ export default function TrainingSessionScreen() {
                 Alert.alert('Fehler', 'Training konnte nicht gespeichert werden.');
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("finishTraining error:", error);
-            Alert.alert('Error', 'Failed to save training session');
+            if (error.isAxiosError && !error.response) {
+                addToQueue('SAVE_TRAINING_SESSION', payload);
+                router.replace({
+                    pathname: '/workout/finished',
+                    params: { xp: 0, offline: 'true' }
+                });
+            } else {
+                Alert.alert('Error', 'Failed to save training session');
+            }
         } finally {
             console.log("finishTraining finally block");
             setLoading(false);

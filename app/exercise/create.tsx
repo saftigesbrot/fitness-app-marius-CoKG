@@ -10,9 +10,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { exercisesService } from '@/services/exercises';
 import { useOfflineMutation } from '@/context/OfflineMutationContext';
+import { useExerciseCategories, EXERCISE_KEYS } from '@/hooks/useExercises';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function CreateExerciseScreen() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [categoryId, setCategoryId] = useState<number | null>(null);
@@ -20,31 +23,21 @@ export default function CreateExerciseScreen() {
     const [isPublic, setIsPublic] = useState(false);
 
     const [categories, setCategories] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
     const textColor = useThemeColor({}, 'text');
 
-    useEffect(() => {
-        loadCategories();
-    }, []);
+    const { data: categoriesData, isLoading: isLoadingCats } = useExerciseCategories();
 
-    const loadCategories = async () => {
-        try {
-            setLoading(true);
-            const data = await exercisesService.getCategories();
-            if (Array.isArray(data)) {
-                setCategories(data);
-            }
-        } catch (error) {
-            console.error('Error loading categories:', error);
-            Alert.alert('Fehler', 'Kategorien konnten nicht geladen werden.');
-        } finally {
-            setLoading(false);
+    useEffect(() => {
+        if (categoriesData && Array.isArray(categoriesData)) {
+            setCategories(categoriesData);
         }
-    };
+    }, [categoriesData]);
+
+    const loading = isLoadingCats;
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -67,16 +60,16 @@ export default function CreateExerciseScreen() {
             return;
         }
 
+        const payload = {
+            name,
+            description,
+            category: categoryId,
+            public: isPublic,
+            imageUri // We pass the URI, the sync function will parse it
+        };
+
         try {
             setSubmitting(true);
-
-            const payload = {
-                name,
-                description,
-                category: categoryId,
-                public: isPublic,
-                imageUri // We pass the URI, the sync function will parse it
-            };
 
             if (!isOnline) {
                 addToQueue('CREATE_EXERCISE', payload);
@@ -105,9 +98,20 @@ export default function CreateExerciseScreen() {
             }
 
             await exercisesService.createExercise(formData);
+
+            // Invalidate cache
+            await queryClient.invalidateQueries({ queryKey: EXERCISE_KEYS.all });
+
             router.replace('/explore');
         } catch (error: any) {
             console.error('Error creating exercise:', error);
+
+            if (error.isAxiosError && !error.response) {
+                addToQueue('CREATE_EXERCISE', payload);
+                router.replace('/explore');
+                return;
+            }
+
             let errorMessage = 'Übung konnte nicht erstellt werden.';
             if (error.response && error.response.data) {
                 // Format the error message details

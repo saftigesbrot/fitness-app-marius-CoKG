@@ -213,7 +213,7 @@ export default function HomeScreen() {
         <ThemedText type="subtitle" style={styles.sectionTitle}>Für Dich</ThemedText>
         {recommendations && (recommendations.plans.length > 0 || recommendations.exercises.length > 0) ? (
           <View>
-            {recommendations.plans.map((plan) => (
+            {recommendations.plans.map((plan: any) => (
               <TouchableOpacity
                 key={plan.plan_id}
                 onPress={() => router.push(`/training/${plan.plan_id}`)}
@@ -232,7 +232,7 @@ export default function HomeScreen() {
                 </ThemedView>
               </TouchableOpacity>
             ))}
-            {recommendations.exercises.map((exercise) => (
+            {recommendations.exercises.map((exercise: any) => (
               <TouchableOpacity
                 key={exercise.exercise_id}
                 onPress={() => router.push(`/exercise/${exercise.exercise_id}`)}

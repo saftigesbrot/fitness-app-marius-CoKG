@@ -17,13 +17,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { exercisesService } from '@/services/exercises';
 import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
+import { useExercises } from '@/hooks/useExercises';
+import { useTrainingCategories, useTrainingPlan, TRAINING_KEYS } from '@/hooks/useTrainingPlans';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function EditTrainingPlanScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     // Form State
     const [name, setName] = useState('');
@@ -38,57 +41,46 @@ export default function EditTrainingPlanScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedExercises, setSelectedExercises] = useState<any[]>([]);
 
-    const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
     const textColor = useThemeColor({}, 'text');
 
+    const { data: catsData, isLoading: isLoadingCats } = useTrainingCategories();
+    const { data: exsData, isLoading: isLoadingExs } = useExercises('', '');
+    const { data: planData, isLoading: isLoadingPlan } = useTrainingPlan(Number(id));
+
+    const loading = isLoadingCats || isLoadingExs || isLoadingPlan;
+
     useEffect(() => {
-        loadData();
-    }, [id]);
+        if (catsData && Array.isArray(catsData)) {
+            setCategories(catsData);
+        }
+    }, [catsData]);
+
+    useEffect(() => {
+        if (exsData && Array.isArray(exsData)) {
+            setAllExercises(exsData);
+        }
+    }, [exsData]);
+
+    useEffect(() => {
+        if (planData) {
+            setName(planData.name);
+            setBreakTime(String(planData.break_time || 60));
+            setIsPublic(planData.public);
+            setSelectedCategory(planData.category);
+
+            if (planData.exercises && Array.isArray(planData.exercises)) {
+                setSelectedExercises(planData.exercises);
+            }
+        }
+    }, [planData]);
 
     useEffect(() => {
         filterExercises();
     }, [searchQuery, allExercises]);
-
-    const loadData = async () => {
-        setLoading(true);
-        try {
-            const [cats, exs, planData] = await Promise.all([
-                trainingsService.getTrainingCategories(),
-                exercisesService.searchExercises(''),
-                trainingsService.getTrainingPlans(Number(id))
-            ]);
-
-            if (Array.isArray(cats)) setCategories(cats);
-            if (Array.isArray(exs)) setAllExercises(exs);
-
-            // Populate Form with Plan Data
-            if (planData) {
-                setName(planData.name);
-                setBreakTime(String(planData.break_time || 60));
-                setIsPublic(planData.public);
-                setSelectedCategory(planData.category);
-
-                // Set existing exercises
-                // The serializer now returns 'exercises' which is a list of objects
-                if (planData.exercises && Array.isArray(planData.exercises)) {
-                    setSelectedExercises(planData.exercises);
-                } else if (planData.order && Array.isArray(planData.order)) {
-                    // Fallback if 'exercises' field is missing but we have IDs (shouldn't happen with new serializer)
-                    // manual mapping if needed, but assuming serializer is good
-                }
-            }
-
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Error', 'Failed to load plan details');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const filterExercises = () => {
         if (!searchQuery) {
@@ -148,6 +140,10 @@ export default function EditTrainingPlanScreen() {
             };
 
             await trainingsService.editTrainingPlan(payload);
+
+            // Invalidate cache
+            await queryClient.invalidateQueries({ queryKey: TRAINING_KEYS.all });
+
             // Redirect to Explore
             router.dismissAll();
             router.push('/(tabs)/explore');
