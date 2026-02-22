@@ -18,6 +18,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
+import { useOfflineMutation } from '@/context/OfflineMutationContext';
 
 const { width } = Dimensions.get('window');
 
@@ -125,6 +126,8 @@ export default function TrainingSessionScreen() {
         }
     };
 
+    const { isOnline, addToQueue } = useOfflineMutation();
+
     const finishTraining = async () => {
         try {
             setLoading(true);
@@ -159,6 +162,15 @@ export default function TrainingSessionScreen() {
                 sets: setsData
             };
             console.log("Sending payload:", JSON.stringify(payload, null, 2));
+
+            if (!isOnline) {
+                addToQueue('SAVE_TRAINING_SESSION', payload);
+                router.replace({
+                    pathname: '/workout/finished',
+                    params: { xp: 0, offline: 'true' }
+                });
+                return;
+            }
 
             const result = await trainingsService.saveTrainingSession(payload);
             console.log("Save result:", result);

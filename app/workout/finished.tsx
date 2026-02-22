@@ -6,7 +6,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function FinishedScreen() {
-    const { xp } = useLocalSearchParams();
+    const { xp, offline } = useLocalSearchParams();
     const backgroundColor = useThemeColor({}, 'background');
     const primaryColor = '#2D74DA';
 
@@ -20,12 +20,17 @@ export default function FinishedScreen() {
                 <ThemedText type="title" style={styles.title}>Training Beendet!</ThemedText>
 
                 <ThemedText style={styles.subtitle}>
-                    Du hast großartige Arbeit geleistet.
+                    {offline === 'true'
+                        ? 'Dein Training wurde lokal gespeichert und wird gesendet sobald du online bist.'
+                        : 'Du hast großartige Arbeit geleistet.'}
                 </ThemedText>
 
                 <View style={styles.xpContainer}>
                     <ThemedText style={styles.xpLabel}>Erhaltene XP</ThemedText>
-                    <ThemedText type="title" style={styles.xpValue}>+{xp || 0}</ThemedText>
+                    <ThemedText type="title" style={styles.xpValue}>
+                        {offline === 'true' ? '?' : `+${xp || 0}`}
+                    </ThemedText>
+                    {offline === 'true' && <ThemedText style={{ color: '#aaa', fontSize: 10, marginTop: 5 }}>Wird berechnet...</ThemedText>}
                 </View>
 
                 <TouchableOpacity

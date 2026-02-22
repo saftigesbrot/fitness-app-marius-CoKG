@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { exercisesService } from '@/services/exercises';
+import { useOfflineMutation } from '@/context/OfflineMutationContext';
 
 export default function CreateExerciseScreen() {
     const router = useRouter();
@@ -58,6 +59,8 @@ export default function CreateExerciseScreen() {
         }
     };
 
+    const { isOnline, addToQueue } = useOfflineMutation();
+
     const handleSubmit = async () => {
         if (!name || !categoryId) {
             Alert.alert('Fehler', 'Name und Kategorie sind erforderlich.');
@@ -66,6 +69,21 @@ export default function CreateExerciseScreen() {
 
         try {
             setSubmitting(true);
+
+            const payload = {
+                name,
+                description,
+                category: categoryId,
+                public: isPublic,
+                imageUri // We pass the URI, the sync function will parse it
+            };
+
+            if (!isOnline) {
+                addToQueue('CREATE_EXERCISE', payload);
+                router.replace('/explore');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('name', name);
             formData.append('description', description);

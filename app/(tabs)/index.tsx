@@ -12,8 +12,8 @@ import { Colors } from '@/constants/theme';
 import { useSession } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { scoringsService } from '@/services/scorings';
-import { trainingsService } from '@/services/trainings';
+import { useUserLevel, useScorings } from '@/hooks/useProfile';
+import { useTrainingPlans, useTrainingRecommendations } from '@/hooks/useTrainingPlans';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -25,79 +25,48 @@ export default function HomeScreen() {
   const textColor = useThemeColor({}, 'text');
 
   const { username } = useSession();
-  const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
-  const [currentScore, setCurrentScore] = useState<number>(0);
-  const [topScore, setTopScore] = useState<number>(0);
-  const [recommendations, setRecommendations] = useState<{ plans: any[]; exercises: any[] } | null>(null);
-  const [leaderboardData, setLeaderboardData] = useState<{ myRank: number; total: number; above: any; below: any } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: levelData, isLoading: isLoadingLevel } = useUserLevel();
+  const { data: scoringData, isLoading: isLoadingScoring } = useScorings('current');
+  const { data: recommendations, isLoading: isLoadingRecs } = useTrainingRecommendations();
+  const { data: leaderboard, isLoading: isLoadingLeaderboard } = useScorings('leaderboard');
+  const { data: plans, isLoading: isLoadingPlans } = useTrainingPlans();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const currentScore = scoringData?.value || 0;
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const level = await scoringsService.getLevel();
-      setLevelData(level);
+  // Derive leaderboard data
+  const leaderboardData = (() => {
+    if (!Array.isArray(leaderboard)) return null;
+    const myIndex = leaderboard.findIndex(item => item.user__username === username);
+    if (myIndex === -1) return null;
 
-      const score = await scoringsService.getScorings('current');
-      if (score && score.value !== undefined) {
-        setCurrentScore(score.value);
-      }
+    return {
+      myRank: myIndex + 1,
+      total: leaderboard.length,
+      above: myIndex > 0 ? leaderboard[myIndex - 1] : null,
+      below: myIndex < leaderboard.length - 1 ? leaderboard[myIndex + 1] : null,
+      topScore: leaderboard[myIndex].value
+    };
+  })();
 
-      // Load recommendations (new public plans and exercises)
-      try {
-        const recs = await trainingsService.getRecommendations();
-        if (recs) {
-          setRecommendations(recs);
-        }
-      } catch (error) {
-        console.log('Error loading recommendations:', error);
-      }
-
-      // Load leaderboard data (uses top scores)
-      const leaderboard = await scoringsService.getScorings('leaderboard');
-      if (Array.isArray(leaderboard)) {
-        // Find my rank
-        const myIndex = leaderboard.findIndex(item => item.user__username === username);
-        if (myIndex !== -1) {
-          setLeaderboardData({
-            myRank: myIndex + 1,
-            total: leaderboard.length,
-            above: myIndex > 0 ? leaderboard[myIndex - 1] : null,
-            below: myIndex < leaderboard.length - 1 ? leaderboard[myIndex + 1] : null
-          });
-          // Set top score for leaderboard display
-          setTopScore(leaderboard[myIndex].value);
-        }
-      }
-    } catch (error) {
-      console.log('Error loading home data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const topScore = leaderboardData?.topScore || 0;
+  const loading = isLoadingLevel || isLoadingScoring || isLoadingRecs || isLoadingLeaderboard || isLoadingPlans;
 
   const handleStartTraining = async () => {
-    try {
-      // Fetch user's plans to start training
-      const plans = await trainingsService.getTrainingPlans();
-      if (Array.isArray(plans) && plans.length > 0) {
+    // ... (logic remains mostly same but uses 'plans' from hook)
+    if (Array.isArray(plans) && plans.length > 0) {
+      // We still need the service to perform the action
+      const { trainingsService } = await import('@/services/trainings');
+      try {
         const planToStart = plans[0];
         const planId = planToStart.plan_id || planToStart.id;
-        console.log("Starting training for plan:", planId);
-        const response = await trainingsService.startTraining(planId);
-        console.log("Start response:", response);
+        await trainingsService.startTraining(planId);
         router.push(`/workout/${planId}`);
-      } else {
-        Alert.alert("Keine Pläne", "Du hast noch keine Trainingspläne. Erstelle zuerst einen Plan.");
-        router.push('/explore');
+      } catch (error) {
+        Alert.alert("Fehler", "Training konnte nicht gestartet werden.");
       }
-    } catch (error) {
-      Alert.alert("Fehler", "Training konnte nicht gestartet werden.");
-      console.error(error);
+    } else {
+      Alert.alert("Keine Pläne", "Du hast noch keine Trainingspläne. Erstelle zuerst einen Plan.");
+      router.push('/explore');
     }
   };
 

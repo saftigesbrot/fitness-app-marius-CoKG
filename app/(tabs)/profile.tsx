@@ -9,8 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Colors } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { scoringsService } from '@/services/scorings';
-import { trainingsService } from '@/services/trainings';
+import { useUserLevel, useScorings } from '@/hooks/useProfile';
+import { useTrainingPlans } from '@/hooks/useTrainingPlans';
 
 export default function ProfileScreen() {
     const { signOut, username } = useSession();
@@ -19,29 +19,11 @@ export default function ProfileScreen() {
     const primaryColor = useThemeColor({}, 'primary');
     const textColor = useThemeColor({}, 'text');
 
-    const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
-    const [currentScore, setCurrentScore] = useState<number>(0);
-    const [plans, setPlans] = useState<any[]>([]);
+    const { data: levelData } = useUserLevel();
+    const { data: scoringData } = useScorings('current');
+    const { data: plans = [] } = useTrainingPlans();
 
-    useEffect(() => {
-        loadProfileData();
-    }, []);
-
-    const loadProfileData = async () => {
-        try {
-            const [level, score, fetchedPlans] = await Promise.all([
-                scoringsService.getLevel(),
-                scoringsService.getScorings('current'),
-                trainingsService.getTrainingPlans()
-            ]);
-
-            if (level) setLevelData(level);
-            if (score && score.value !== undefined) setCurrentScore(score.value);
-            if (Array.isArray(fetchedPlans)) setPlans(fetchedPlans);
-        } catch (error) {
-            console.error("Failed to load profile data:", error);
-        }
-    };
+    const currentScore = scoringData?.value || 0;
 
     const handleLogout = () => {
         if (Platform.OS === 'web') {

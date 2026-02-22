@@ -57,10 +57,63 @@ function RootLayoutNav() {
   );
 }
 
+import { QueryProvider } from '@/context/QueryContext';
+import { OfflineMutationProvider, useOfflineMutation } from '@/context/OfflineMutationContext';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { useQueryClient } from '@tanstack/react-query';
+import { USER_KEYS } from '@/hooks/useProfile';
+import { TRAINING_KEYS } from '@/hooks/useTrainingPlans';
+import { usersService } from '@/services/users';
+import { scoringsService } from '@/services/scorings';
+import { trainingsService } from '@/services/trainings';
+
+function DataPrefetcher() {
+  const { session } = useSession();
+  const { isOnline } = useOfflineMutation();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (session && isOnline) {
+      console.log('Prefetching core data...');
+      // Prefetch user profile/level/scoring
+      queryClient.prefetchQuery({
+        queryKey: USER_KEYS.level,
+        queryFn: scoringsService.getLevel,
+      });
+      queryClient.prefetchQuery({
+        queryKey: USER_KEYS.scoring('current'),
+        queryFn: () => scoringsService.getScorings('current'),
+      });
+      queryClient.prefetchQuery({
+        queryKey: USER_KEYS.scoring('leaderboard'),
+        queryFn: () => scoringsService.getScorings('leaderboard'),
+      });
+
+      // Prefetch training plans and recommendations
+      queryClient.prefetchQuery({
+        queryKey: TRAINING_KEYS.list(''),
+        queryFn: () => trainingsService.searchTrainingPlans(''),
+      });
+      queryClient.prefetchQuery({
+        queryKey: TRAINING_KEYS.recommendations,
+        queryFn: trainingsService.getRecommendations,
+      });
+    }
+  }, [session, isOnline, queryClient]);
+
+  return null;
+}
+
 export default function RootLayout() {
   return (
-    <SessionProvider>
-      <RootLayoutNav />
-    </SessionProvider>
+    <QueryProvider>
+      <OfflineMutationProvider>
+        <SessionProvider>
+          <DataPrefetcher />
+          <OfflineIndicator />
+          <RootLayoutNav />
+        </SessionProvider>
+      </OfflineMutationProvider>
+    </QueryProvider>
   );
 }

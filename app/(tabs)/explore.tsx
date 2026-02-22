@@ -7,76 +7,39 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { exercisesService } from '@/services/exercises';
-import { trainingsService } from '@/services/trainings';
+import { useTrainingPlans } from '@/hooks/useTrainingPlans';
+import { useExercises, useExerciseCategories } from '@/hooks/useExercises';
 
 export default function ExploreScreen() {
-  const [plans, setPlans] = useState<any[]>([]);
-  const [exercises, setExercises] = useState<any[]>([]);
-  const [searchResultsPlans, setSearchResultsPlans] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
-
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
 
-  useEffect(() => {
+  // Core data hooks
+  const { data: plans = [], isLoading: isLoadingPlans } = useTrainingPlans();
+  const { data: categories = [], isLoading: isLoadingCategories } = useExerciseCategories();
 
-    loadData();
-  }, []);
+  // Derived category name
+  const selectedCategoryName = (() => {
+    if (!selectedCategory) return undefined;
+    const cat = categories.find((c: any) => (c.category_id || c.id) === selectedCategory);
+    return cat ? cat.name : undefined;
+  })();
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [fetchedPlans, fetchedExercises, fetchedCategories] = await Promise.all([
-        trainingsService.getTrainingPlans(),
-        exercisesService.searchExercises(searchQuery, selectedCategory ? String(selectedCategory) : undefined),
-        exercisesService.getCategories()
-      ]);
+  // Filtered/Searched data hooks
+  const { data: exercises = [], isLoading: isLoadingExercises } = useExercises(
+    searchQuery || undefined,
+    selectedCategoryName
+  );
 
+  const { data: searchResultsPlans = [], isLoading: isLoadingSearchPlans } = useTrainingPlans(
+    searchQuery
+  );
 
-
-      if (Array.isArray(fetchedPlans)) setPlans(fetchedPlans);
-      if (Array.isArray(fetchedExercises)) setExercises(fetchedExercises);
-      if (Array.isArray(fetchedCategories)) setCategories(fetchedCategories);
-    } catch (error) {
-      console.log('Error loading explore data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadExercises();
-  }, [searchQuery, selectedCategory]);
-
-  const loadExercises = async () => {
-    try {
-      let categoryName = undefined;
-      if (selectedCategory) {
-        const cat = categories.find(c => (c.category_id || c.id) === selectedCategory);
-        categoryName = cat ? cat.name : undefined;
-      }
-
-
-
-      const fetchedExercises = await exercisesService.searchExercises(searchQuery, categoryName);
-      if (Array.isArray(fetchedExercises)) setExercises(fetchedExercises);
-
-      if (searchQuery) {
-        const foundPlans = await trainingsService.searchTrainingPlans(searchQuery);
-        if (Array.isArray(foundPlans)) setSearchResultsPlans(foundPlans);
-      } else {
-        setSearchResultsPlans([]);
-      }
-    } catch (error) {
-      console.error("Error loading exercises/plans", error);
-    }
-  }
+  const loading = isLoadingPlans || isLoadingCategories || isLoadingExercises || isLoadingSearchPlans;
 
   const filteredExercises = exercises;
 

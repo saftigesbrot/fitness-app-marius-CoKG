@@ -20,6 +20,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { exercisesService } from '@/services/exercises';
 import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
+import { useOfflineMutation } from '@/context/OfflineMutationContext';
 
 export default function CreateTrainingPlanScreen() {
     const router = useRouter();
@@ -104,6 +105,8 @@ export default function CreateTrainingPlanScreen() {
         setSelectedExercises(newExercises);
     };
 
+    const { isOnline, addToQueue } = useOfflineMutation();
+
     const handleCreate = async () => {
         if (!name.trim()) {
             Alert.alert('Validation', 'Please enter a plan name');
@@ -130,6 +133,13 @@ export default function CreateTrainingPlanScreen() {
                 break_time: parseInt(breakTime) || 60,
                 order: exerciseIds
             };
+
+            if (!isOnline) {
+                addToQueue('CREATE_TRAINING_PLAN', payload);
+                router.dismissAll();
+                router.push('/(tabs)/explore');
+                return;
+            }
 
             await trainingsService.createTrainingPlan(payload);
             // Redirect to Explore
