@@ -106,7 +106,7 @@ export default function CreateExerciseScreen() {
         } catch (error: any) {
             console.error('Error creating exercise:', error);
 
-            if (error.isAxiosError && !error.response) {
+            if ((error.isAxiosError || error.name === 'AxiosError' || error.message === 'Network Error') && !error.response) {
                 addToQueue('CREATE_EXERCISE', payload);
                 router.replace('/explore');
                 return;

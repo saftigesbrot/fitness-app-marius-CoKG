@@ -196,7 +196,7 @@ export default function TrainingSessionScreen() {
 
         } catch (error: any) {
             console.error("finishTraining error:", error);
-            if (error.isAxiosError && !error.response) {
+            if ((error.isAxiosError || error.name === 'AxiosError' || error.message === 'Network Error') && !error.response) {
                 addToQueue('SAVE_TRAINING_SESSION', payload);
                 router.replace({
                     pathname: '/workout/finished',

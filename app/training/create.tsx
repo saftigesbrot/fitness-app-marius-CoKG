@@ -144,7 +144,7 @@ export default function CreateTrainingPlanScreen() {
             router.push('/(tabs)/explore');
         } catch (error: any) {
             console.error('Create error:', error);
-            if (error.isAxiosError && !error.response) {
+            if ((error.isAxiosError || error.name === 'AxiosError' || error.message === 'Network Error') && !error.response) {
                 addToQueue('CREATE_TRAINING_PLAN', payload);
                 router.dismissAll();
                 router.push('/(tabs)/explore');
