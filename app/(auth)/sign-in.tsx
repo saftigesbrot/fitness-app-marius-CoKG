@@ -5,7 +5,7 @@ import { useSession } from '../../context/AuthContext';
 import api from '../../services/api';
 
 export default function SignIn() {
-    const { signIn } = useSession();
+    const { signIn, signInAsGuest } = useSession();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -91,6 +91,17 @@ export default function SignIn() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
+                    style={[styles.button, styles.guestButton]}
+                    onPress={() => {
+                        signInAsGuest();
+                        router.replace('/');
+                    }}
+                    disabled={loading}
+                >
+                    <Text style={styles.guestButtonText}>Ohne Account fortfahren</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                     style={styles.linkButton}
                     onPress={() => router.push('/(auth)/sign-up')}
                 >
@@ -151,6 +162,16 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    guestButton: {
+        backgroundColor: '#e5e5ea',
+        shadowOpacity: 0.1,
+        marginTop: 8,
+    },
+    guestButtonText: {
+        color: '#333',
+        fontSize: 16,
+        fontWeight: '600',
     },
     linkButton: {
         marginTop: 20,

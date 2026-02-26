@@ -14,7 +14,7 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { session, isLoading } = useSession();
+  const { session, isGuest, isLoading } = useSession();
   const segments = useSegments();
   const router = useRouter();
 
@@ -23,14 +23,14 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === '(auth)';
 
-    if (!session && !inAuthGroup) {
+    if (!session && !isGuest && !inAuthGroup) {
       // Redirect to the sign-in page.
       router.replace('/(auth)/sign-in');
-    } else if (session && inAuthGroup) {
+    } else if ((session || isGuest) && inAuthGroup) {
       // Redirect away from the sign-in page.
       router.replace('/');
     }
-  }, [session, segments, isLoading]);
+  }, [session, isGuest, segments, isLoading]);
 
   if (isLoading) {
     return (
