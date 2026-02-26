@@ -73,7 +73,7 @@ export default function CreateExerciseScreen() {
 
             if (!isOnline) {
                 addToQueue('CREATE_EXERCISE', payload);
-                router.replace('/explore');
+                router.replace('/(tabs)/explore');
                 return;
             }
 
@@ -102,13 +102,13 @@ export default function CreateExerciseScreen() {
             // Invalidate cache
             await queryClient.invalidateQueries({ queryKey: EXERCISE_KEYS.all });
 
-            router.replace('/explore');
+            router.replace('/(tabs)/explore');
         } catch (error: any) {
             console.error('Error creating exercise:', error);
 
             if ((error.isAxiosError || error.name === 'AxiosError' || error.message === 'Network Error') && !error.response) {
                 addToQueue('CREATE_EXERCISE', payload);
-                router.replace('/explore');
+                router.replace('/(tabs)/explore');
                 return;
             }
 

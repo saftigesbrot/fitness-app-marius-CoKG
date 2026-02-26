@@ -4,6 +4,9 @@ import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { exercisesService } from '@/services/exercises';
 import { trainingsService } from '@/services/trainings';
 import { Alert } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { EXERCISE_KEYS } from '@/hooks/useExercises';
+import { TRAINING_KEYS } from '@/hooks/useTrainingPlans';
 
 const QUEUE_KEY = 'mutation_queue';
 
@@ -36,6 +39,7 @@ export const OfflineMutationProvider = ({ children }: { children: React.ReactNod
     const [queue, setQueue] = useState<MutationAction[]>([]);
     const [isOnline, setIsOnline] = useState(true);
     const [isSyncing, setIsSyncing] = useState(false);
+    const queryClient = useQueryClient();
 
     useEffect(() => {
         loadQueue();
@@ -129,13 +133,25 @@ export const OfflineMutationProvider = ({ children }: { children: React.ReactNod
         const currentQueue = [...queue];
         const failedActions: MutationAction[] = [];
 
+        let invalidatedExercises = false;
+        let invalidatedTrainings = false;
+
         for (const action of currentQueue) {
             try {
                 await processAction(action);
+                if (action.type === 'CREATE_EXERCISE') invalidatedExercises = true;
+                if (action.type === 'CREATE_TRAINING_PLAN' || action.type === 'SAVE_TRAINING_SESSION') invalidatedTrainings = true;
             } catch (error) {
                 console.error(`Failed to sync action ${action.type}:`, error);
                 failedActions.push(action);
             }
+        }
+
+        if (invalidatedExercises) {
+            await queryClient.invalidateQueries({ queryKey: EXERCISE_KEYS.all });
+        }
+        if (invalidatedTrainings) {
+            await queryClient.invalidateQueries({ queryKey: TRAINING_KEYS.all });
         }
 
         if (failedActions.length < currentQueue.length) {
