@@ -1,14 +1,43 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LevelUpModal } from '@/components/ui/LevelUpModal';
+import { scoringsService } from '@/services/scorings';
 
 export default function FinishedScreen() {
-    const { xp } = useLocalSearchParams();
+    const { xp, oldLevel } = useLocalSearchParams();
     const backgroundColor = useThemeColor({}, 'background');
     const primaryColor = '#2D74DA';
+    
+    const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+    const [newLevel, setNewLevel] = useState(0);
+
+    useEffect(() => {
+        // Check if level up occurred
+        const checkLevelUp = async () => {
+            try {
+                const levelData = await scoringsService.getLevel();
+                if (levelData && oldLevel) {
+                    const previousLevel = parseInt(oldLevel as string);
+                    if (levelData.level > previousLevel) {
+                        setNewLevel(levelData.level);
+                        // Delay modal to let user see XP first
+                        setTimeout(() => {
+                            setShowLevelUpModal(true);
+                        }, 1500);
+                    }
+                }
+            } catch (error) {
+                console.log('Error checking level up:', error);
+            }
+        };
+
+        checkLevelUp();
+    }, [oldLevel]);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor }]}>
@@ -35,6 +64,16 @@ export default function FinishedScreen() {
                     <ThemedText style={styles.buttonText}>Zurück zum Home</ThemedText>
                 </TouchableOpacity>
             </View>
+            
+            {/* Level Up Modal */}
+            <LevelUpModal
+                visible={showLevelUpModal}
+                level={newLevel}
+                onClose={() => {
+                    setShowLevelUpModal(false);
+                    router.dismissTo('/');
+                }}
+            />
         </SafeAreaView>
     );
 }

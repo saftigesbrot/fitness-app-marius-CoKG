@@ -1,13 +1,15 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { getProgressColor } from '@/utils/colors';
 
 interface CircularProgressProps {
     size: number;
     strokeWidth: number;
     progress: number; // 0 to 1
-    color: string;
+    color?: string;
     trackColor?: string;
     children?: React.ReactNode;
+    dynamicColor?: boolean; // If true, color changes based on progress
 }
 
 export function CircularProgress({
@@ -17,9 +19,11 @@ export function CircularProgress({
     color,
     trackColor = '#333',
     children,
+    dynamicColor = false,
 }: CircularProgressProps) {
     const radius = size / 2;
     const clampedProgress = Math.min(Math.max(progress, 0), 1);
+    const finalColor = dynamicColor ? getProgressColor(clampedProgress) : (color || '#4CD964');
     const degrees = clampedProgress * 360;
 
     const renderHalf = (isLeft: boolean) => {
@@ -43,7 +47,7 @@ export function CircularProgress({
                         height: size,
                         borderRadius: size / 2,
                         borderWidth: strokeWidth,
-                        borderColor: color,
+                        borderColor: finalColor,
                         position: 'absolute',
                         left: isLeft ? 0 : -size / 2,
                         transform: [

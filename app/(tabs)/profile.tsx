@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { CircularProgress } from '@/components/ui/CircularProgress';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Colors } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -78,14 +79,40 @@ export default function ProfileScreen() {
 
                 {/* Level Card */}
                 <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
-                    <View style={styles.levelRow}>
-                        <ThemedText type="subtitle">Level {levelData?.level || 1}</ThemedText>
-                        <ThemedText style={styles.xpText}>{levelData?.xp_current || 0} / {levelData?.xp_needed || 0} XP</ThemedText>
+                    <View style={styles.levelContainer}>
+                        {/* Circular Progress */}
+                        <CircularProgress 
+                            size={100} 
+                            strokeWidth={8} 
+                            progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)}
+                            dynamicColor={true}
+                        >
+                            <View style={styles.circularProgressContent}>
+                                <ThemedText type="subtitle" style={styles.levelNumber}>
+                                    {levelData?.level || 1}
+                                </ThemedText>
+                                <ThemedText style={styles.levelLabel}>Level</ThemedText>
+                            </View>
+                        </CircularProgress>
+
+                        {/* Level Info */}
+                        <View style={styles.levelInfo}>
+                            <View style={styles.levelRow}>
+                                <ThemedText type="subtitle">Level {levelData?.level || 1}</ThemedText>
+                                <ThemedText style={styles.xpText}>{levelData?.xp_current || 0} / {levelData?.xp_needed || 0} XP</ThemedText>
+                            </View>
+                            <View style={{ marginVertical: 10 }}>
+                                <ProgressBar 
+                                    progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)} 
+                                    height={10} 
+                                    dynamicColor={true}
+                                />
+                            </View>
+                            <ThemedText style={styles.scoreText}>
+                                Trainingsscore: <ThemedText type="defaultSemiBold">{currentScore} / 2000 Punkte</ThemedText>
+                            </ThemedText>
+                        </View>
                     </View>
-                    <View style={{ marginVertical: 10 }}>
-                        <ProgressBar progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)} color="#4CD964" height={8} />
-                    </View>
-                    <ThemedText style={styles.scoreText}>Aktueller Trainingsscore: <ThemedText type="defaultSemiBold">{currentScore}</ThemedText></ThemedText>
                 </ThemedView>
 
                 {/* Personal Records (Static for now) */}
@@ -172,6 +199,27 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 16,
         marginBottom: 20,
+    },
+    levelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 20,
+    },
+    circularProgressContent: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    levelNumber: {
+        fontSize: 32,
+        fontWeight: 'bold',
+    },
+    levelLabel: {
+        fontSize: 12,
+        color: '#aaa',
+        marginTop: -5,
+    },
+    levelInfo: {
+        flex: 1,
     },
     levelRow: {
         flexDirection: 'row',

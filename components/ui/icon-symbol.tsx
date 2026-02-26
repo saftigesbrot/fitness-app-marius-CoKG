@@ -32,6 +32,8 @@ const MAPPING = {
   'trash.fill': 'delete',
   'chevron.up': 'keyboard-arrow-up',
   'chevron.down': 'keyboard-arrow-down',
+  'arrow.up': 'arrow-upward',
+  'arrow.down': 'arrow-downward',
   'person.circle': 'account-circle',
   'camera.fill': 'photo-camera',
   'clock.fill': 'schedule',

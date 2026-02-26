@@ -1,13 +1,15 @@
 
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CircularProgress } from '@/components/ui/CircularProgress';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LevelUpModal } from '@/components/ui/LevelUpModal';
 import { Colors } from '@/constants/theme';
 import { useSession } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -26,25 +28,47 @@ export default function HomeScreen() {
 
   const { username } = useSession();
   const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
-  const [currentScore, setCurrentScore] = useState<number>(0);
-  const [topScore, setTopScore] = useState<number>(0);
+  const [scoringData, setScoringData] = useState<{ value: number } | null>(null);
   const [recommendations, setRecommendations] = useState<{ plans: any[]; exercises: any[] } | null>(null);
   const [leaderboardData, setLeaderboardData] = useState<{ myRank: number; total: number; above: any; below: any } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const [newLevel, setNewLevel] = useState(0);
+  const previousLevelRef = useRef<number | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
+  // Check for level up
+  useEffect(() => {
+    if (levelData && levelData.level) {
+      // If we have a previous level and the current level is higher, show modal
+      if (previousLevelRef.current !== null && levelData.level > previousLevelRef.current) {
+        setNewLevel(levelData.level);
+        setShowLevelUpModal(true);
+      }
+      // Update previous level
+      previousLevelRef.current = levelData.level;
+    }
+  }, [levelData]);
+
   const loadData = async () => {
     try {
       setLoading(true);
+      
+      console.log('Loading level data...');
       const level = await scoringsService.getLevel();
+      console.log('Level data received:', level);
       setLevelData(level);
 
+      console.log('Loading scoring data...');
       const score = await scoringsService.getScorings('current');
-      if (score && score.value !== undefined) {
-        setCurrentScore(score.value);
+      console.log('Scoring data received:', score);
+      if (score) {
+        setScoringData({
+          value: score.value || 0
+        });
       }
 
       // Load recommendations (new public plans and exercises)
@@ -69,8 +93,6 @@ export default function HomeScreen() {
             above: myIndex > 0 ? leaderboard[myIndex - 1] : null,
             below: myIndex < leaderboard.length - 1 ? leaderboard[myIndex + 1] : null
           });
-          // Set top score for leaderboard display
-          setTopScore(leaderboard[myIndex].value);
         }
       }
     } catch (error) {
@@ -119,7 +141,9 @@ export default function HomeScreen() {
             />
             <View>
               <ThemedText type="title">Hallo, {username || 'Gast'}!</ThemedText>
-              <ThemedText style={styles.subtitle}>Level {levelData?.level || 1} • {levelData?.xp_current || 0}/{levelData?.xp_needed || 0} XP</ThemedText>
+              <ThemedText style={styles.subtitle}>
+                Level {levelData?.level || 1} ({levelData?.xp || 0} XP) • {scoringData?.value || 0} Punkte
+              </ThemedText>
             </View>
           </View>
           <TouchableOpacity onPress={() => router.push('/notifications')}>
@@ -140,7 +164,7 @@ export default function HomeScreen() {
                 size={80}
                 strokeWidth={8}
                 progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)}
-                color="#4CD964"
+                dynamicColor={true}
                 trackColor="#333"
               >
                 <View style={{ alignItems: 'center' }}>
@@ -155,13 +179,13 @@ export default function HomeScreen() {
               <CircularProgress
                 size={80}
                 strokeWidth={8}
-                progress={currentScore / 2000}
-                color={primaryColor}
+                progress={(scoringData?.value || 0) / 2000}
+                dynamicColor={true}
                 trackColor="#333"
               >
                 <View style={{ alignItems: 'center' }}>
-                  <ThemedText type="subtitle" style={{ fontSize: 18, lineHeight: 22 }}>{currentScore}</ThemedText>
-                  <ThemedText style={{ fontSize: 10, color: '#aaa' }}>Score</ThemedText>
+                  <ThemedText type="subtitle" style={{ fontSize: 18, lineHeight: 22 }}>{scoringData?.value || 0}</ThemedText>
+                  <ThemedText style={{ fontSize: 10, color: '#aaa' }}>Punkte</ThemedText>
                 </View>
               </CircularProgress>
             </View>
@@ -212,19 +236,23 @@ export default function HomeScreen() {
               <Image source={{ uri: `https://i.pravatar.cc/150?u=${leaderboardData.above.user__username}` }} style={styles.smallAvatar} />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <ThemedText>{leaderboardData.above.user__username} ({leaderboardData.above.value} Pkt)</ThemedText>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${Math.min((leaderboardData.above.value / 2000) * 100, 100)}%` }]} />
-                </View>
+                <ProgressBar 
+                  progress={Math.min(leaderboardData.above.value / 2000, 1)} 
+                  height={6} 
+                  dynamicColor={true}
+                />
               </View>
             </View>
           )}
           <View style={[styles.leaderboardRow, leaderboardData?.above && { marginTop: 15 }]}>
             <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.smallAvatar} />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <ThemedText>{username || 'Du'} ({topScore} Pkt)</ThemedText>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${Math.min((topScore / 2000) * 100, 100)}%`, backgroundColor: '#4CD964' }]} />
-              </View>
+              <ThemedText>{username || 'Du'} ({scoringData?.value || 0} Pkt)</ThemedText>
+              <ProgressBar 
+                progress={(scoringData?.value || 0) / 2000} 
+                height={6} 
+                dynamicColor={true}
+              />
             </View>
           </View>
           {leaderboardData?.below && (
@@ -232,9 +260,11 @@ export default function HomeScreen() {
               <Image source={{ uri: `https://i.pravatar.cc/150?u=${leaderboardData.below.user__username}` }} style={styles.smallAvatar} />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <ThemedText>{leaderboardData.below.user__username} ({leaderboardData.below.value} Pkt)</ThemedText>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${Math.min((leaderboardData.below.value / 2000) * 100, 100)}%` }]} />
-                </View>
+                <ProgressBar 
+                  progress={Math.min(leaderboardData.below.value / 2000, 1)} 
+                  height={6} 
+                  dynamicColor={true}
+                />
               </View>
             </View>
           )}
@@ -296,6 +326,13 @@ export default function HomeScreen() {
         )}
 
       </ScrollView >
+      
+      {/* Level Up Modal */}
+      <LevelUpModal
+        visible={showLevelUpModal}
+        level={newLevel}
+        onClose={() => setShowLevelUpModal(false)}
+      />
     </SafeAreaView >
   );
 }
@@ -413,18 +450,7 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
   },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: '#333',
-    borderRadius: 3,
-    marginTop: 5,
-    width: '100%',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#2D74DA',
-    borderRadius: 3,
-  },
+
   row: {
     flexDirection: 'row',
     alignItems: 'center',

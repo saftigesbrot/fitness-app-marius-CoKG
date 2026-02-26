@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
+import { scoringsService } from '@/services/scorings';
 import { API_URL } from '@/services/api';
 
 const { width } = Dimensions.get('window');
@@ -39,6 +40,7 @@ export default function TrainingSessionScreen() {
     const [exercises, setExercises] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [currentLevel, setCurrentLevel] = useState<number>(1);
 
     // State for Sets
     // Map exerciseIndex -> Array of Sets
@@ -74,6 +76,13 @@ export default function TrainingSessionScreen() {
     const loadSession = async () => {
         try {
             setLoading(true);
+            
+            // Load current level before workout
+            const levelData = await scoringsService.getLevel();
+            if (levelData) {
+                setCurrentLevel(levelData.level);
+            }
+            
             const planData = await trainingsService.getTrainingPlans(Number(id));
             setPlan(planData);
 
@@ -167,7 +176,10 @@ export default function TrainingSessionScreen() {
                 // Navigate to Finished Screen
                 router.replace({
                     pathname: '/workout/finished',
-                    params: { xp: result.xp_earned }
+                    params: { 
+                        xp: result.xp_earned,
+                        oldLevel: currentLevel.toString()
+                    }
                 });
             } else {
                 Alert.alert('Fehler', 'Training konnte nicht gespeichert werden.');
