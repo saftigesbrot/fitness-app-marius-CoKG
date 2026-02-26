@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -17,6 +18,7 @@ export default function LeaderboardScreen() {
     const [filter, setFilter] = useState<TimeFilter>('Täglich');
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const { username } = useSession();
 
     const backgroundColor = useThemeColor({}, 'background');
@@ -26,6 +28,20 @@ export default function LeaderboardScreen() {
 
     useEffect(() => {
         loadLeaderboard();
+    }, [filter, mode]);
+
+    // Load data when screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            loadLeaderboard();
+        }, [filter, mode])
+    );
+
+    // Pull to refresh handler
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadLeaderboard();
+        setRefreshing(false);
     }, [filter, mode]);
 
     const loadLeaderboard = async () => {
@@ -139,14 +155,12 @@ export default function LeaderboardScreen() {
         if (item.rank === 1) badgeColor = '#FFD700'; // Gold
         else if (item.rank === 2) badgeColor = '#C0C0C0'; // Silver
         else if (item.rank === 3) badgeColor = '#CD7F32'; // Bronze
-        else if (item.isMe) badgeColor = '#4CD964'; // Green for current user
 
         // Avatar border color
         let avatarBorderColor = '#555';
         if (item.rank === 1) avatarBorderColor = '#FFD700';
         else if (item.rank === 2) avatarBorderColor = '#C0C0C0';
         else if (item.rank === 3) avatarBorderColor = '#CD7F32';
-        else if (item.isMe) avatarBorderColor = primaryColor;
 
         // Get display value for badge
         const badgeValue = mode === 'level' ? item.level : item.rawValue;
@@ -163,13 +177,21 @@ export default function LeaderboardScreen() {
         }
 
         return (
-            <View style={[styles.userRow, { backgroundColor: cardColor }, item.isMe && { backgroundColor: primaryColor + '20' }]}>
+            <View style={[
+                styles.userRow, 
+                { backgroundColor: cardColor }, 
+                item.isMe && { 
+                    backgroundColor: 'rgba(255, 204, 0, 0.08)',
+                    borderWidth: 2,
+                    borderColor: '#FFD700',
+                }
+            ]}>
                 {/* Avatar */}
                 <Image source={{ uri: item.avatar }} style={[styles.avatar, { borderColor: avatarBorderColor }]} />
                 
                 {/* User Info with Progress */}
                 <View style={styles.userInfo}>
-                    <ThemedText type="defaultSemiBold" style={[{ color: textColor }, item.isMe && { color: primaryColor }]}>
+                    <ThemedText type="defaultSemiBold" style={{ color: textColor }}>
                         {item.name}
                     </ThemedText>
                     
@@ -179,16 +201,20 @@ export default function LeaderboardScreen() {
                             progress={progress} 
                             height={10} 
                             dynamicColor={true}
+                            progressType={mode === 'level' ? 'level' : 'points'}
                         />
                     </View>
                     
                     {/* Points/XP Info */}
                     {mode === 'level' ? (
-                        <ThemedText style={[styles.xpText, item.isMe && { color: textColor, fontWeight: '600' }]}>
+                        <ThemedText style={styles.xpText}>
                             {item.xpCurrent} / {item.xpNeeded} XP
                         </ThemedText>
                     ) : (
-                        <ThemedText style={[styles.xpText, item.isMe && { color: textColor, fontWeight: '600' }]}>
+                        <ThemedText style={[
+                            styles.xpText, 
+                            item.rawValue >= 2000 && { color: '#FFD700', fontWeight: '700' }
+                        ]}>
                             {item.rawValue} / 2000 Punkte
                         </ThemedText>
                     )}
@@ -284,6 +310,14 @@ export default function LeaderboardScreen() {
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={<ThemedText style={{ textAlign: 'center', marginTop: 20, color: '#aaa' }}>Keine Einträge gefunden.</ThemedText>}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                tintColor={primaryColor}
+                                colors={[primaryColor]}
+                            />
+                        }
                     />
                 )}
             </View>

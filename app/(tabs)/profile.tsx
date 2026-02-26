@@ -1,8 +1,9 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useSession } from '@/context/AuthContext';
-import { useEffect, useState } from 'react';
-import { Alert, Image, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, Image, Platform, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -23,9 +24,20 @@ export default function ProfileScreen() {
     const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
     const [currentScore, setCurrentScore] = useState<number>(0);
     const [plans, setPlans] = useState<any[]>([]);
+    const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        loadProfileData();
+    // Load data when screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            loadProfileData();
+        }, [])
+    );
+
+    // Pull to refresh handler
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadProfileData();
+        setRefreshing(false);
     }, []);
 
     const loadProfileData = async () => {
@@ -65,7 +77,17 @@ export default function ProfileScreen() {
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.container}>
+            <ScrollView 
+                contentContainerStyle={styles.container}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={primaryColor}
+                        colors={[primaryColor]}
+                    />
+                }
+            >
                 {/* Header */}
                 <View style={styles.header}>
                     <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.avatar} />
@@ -86,6 +108,7 @@ export default function ProfileScreen() {
                             strokeWidth={8} 
                             progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)}
                             dynamicColor={true}
+                            progressType="level"
                         >
                             <View style={styles.circularProgressContent}>
                                 <ThemedText type="subtitle" style={styles.levelNumber}>
@@ -106,10 +129,16 @@ export default function ProfileScreen() {
                                     progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)} 
                                     height={10} 
                                     dynamicColor={true}
+                                    progressType="level"
                                 />
                             </View>
                             <ThemedText style={styles.scoreText}>
-                                Trainingsscore: <ThemedText type="defaultSemiBold">{currentScore} / 2000 Punkte</ThemedText>
+                                Trainingsscore: <ThemedText 
+                                    type="defaultSemiBold" 
+                                    style={currentScore >= 2000 ? { color: '#FFD700' } : undefined}
+                                >
+                                    {currentScore} / 2000 Punkte
+                                </ThemedText>
                             </ThemedText>
                         </View>
                     </View>

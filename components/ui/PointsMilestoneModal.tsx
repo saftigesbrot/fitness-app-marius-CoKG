@@ -4,13 +4,13 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-interface LevelUpModalProps {
+interface PointsMilestoneModalProps {
     visible: boolean;
-    level: number;
+    points: number;
     onClose: () => void;
 }
 
-export function LevelUpModal({ visible, level, onClose }: LevelUpModalProps) {
+export function PointsMilestoneModal({ visible, points, onClose }: PointsMilestoneModalProps) {
     const primaryColor = useThemeColor({}, 'primary');
     const cardColor = useThemeColor({}, 'card');
     const textColor = useThemeColor({}, 'text');
@@ -29,6 +29,43 @@ export function LevelUpModal({ visible, level, onClose }: LevelUpModalProps) {
             scaleAnim.setValue(0);
         }
     }, [visible]);
+    
+    // Determine milestone type and content
+    const getMilestoneContent = () => {
+        if (points >= 2000) {
+            return {
+                icon: 'crown.fill' as const,
+                iconColor: '#FFD700',
+                title: 'Unglaublich!',
+                subtitle: '2000 Punkte erreicht! 👑',
+                message: 'Du hast die Spitze erreicht! Du bist ein wahrer Champion! Halte diesen beeindruckenden Stand und inspiriere andere! 💪✨',
+                emoji: '🏆',
+                bgColor: '#FFD700'
+            };
+        } else if (points >= 1500) {
+            return {
+                icon: 'star.fill' as const,
+                iconColor: '#4CAF50',
+                title: 'Guter Job!',
+                subtitle: '1500 Punkte erreicht! 🎯',
+                message: 'Fantastische Leistung! Du bist auf dem besten Weg zur Spitze. Weiter so! 💚',
+                emoji: '🌟',
+                bgColor: '#4CAF50'
+            };
+        } else {
+            return {
+                icon: 'heart.fill' as const,
+                iconColor: '#FF9800',
+                title: 'Nicht aufgeben!',
+                subtitle: '500 Punkte unterschritten 😔',
+                message: 'Jeder hat mal einen schwachen Moment. Das ist okay! Morgen ist ein neuer Tag - du schaffst das! 💙',
+                emoji: '💪',
+                bgColor: '#FF9800'
+            };
+        }
+    };
+    
+    const content = getMilestoneContent();
     
     return (
         <Modal
@@ -53,44 +90,37 @@ export function LevelUpModal({ visible, level, onClose }: LevelUpModalProps) {
                 >
                     {/* Sparkles Background */}
                     <View style={styles.sparklesContainer}>
-                        <IconSymbol name="sparkles" size={40} color="#FFD700" style={styles.sparkle1} />
-                        <IconSymbol name="sparkles" size={30} color="#FF6B6B" style={styles.sparkle2} />
-                        <IconSymbol name="sparkles" size={35} color="#4ECDC4" style={styles.sparkle3} />
-                        <IconSymbol name="sparkles" size={25} color="#95E1D3" style={styles.sparkle4} />
+                        <IconSymbol name="sparkles" size={35} color={content.bgColor} style={styles.sparkle1} />
+                        <IconSymbol name="sparkles" size={25} color={content.bgColor} style={styles.sparkle2} />
+                        <IconSymbol name="sparkles" size={30} color={content.bgColor} style={styles.sparkle3} />
+                        <IconSymbol name="sparkles" size={28} color={content.bgColor} style={styles.sparkle4} />
                     </View>
                     
-                    {/* Trophy Icon */}
-                    <View style={[styles.trophyContainer, { backgroundColor: primaryColor + '20' }]}>
-                        <IconSymbol name="trophy.fill" size={80} color="#FFD700" />
+                    {/* Icon */}
+                    <View style={[styles.iconContainer, { 
+                        backgroundColor: content.iconColor + '20',
+                        borderColor: content.iconColor
+                    }]}>
+                        <IconSymbol name={content.icon} size={80} color={content.iconColor} />
                     </View>
                     
-                    {/* Congratulations Text */}
-                    <View style={styles.congratsContainer}>
-                        <ThemedText style={styles.congratsEmoji}>🎉</ThemedText>
-                        <ThemedText type="title" style={[styles.congratsText, { color: primaryColor }]}>
-                            Glückwunsch!
+                    {/* Title Text */}
+                    <View style={styles.titleContainer}>
+                        <ThemedText style={styles.titleEmoji}>{content.emoji}</ThemedText>
+                        <ThemedText type="title" style={[styles.titleText, { color: content.bgColor }]}>
+                            {content.title}
                         </ThemedText>
-                        <ThemedText style={styles.congratsEmoji}>🎉</ThemedText>
+                        <ThemedText style={styles.titleEmoji}>{content.emoji}</ThemedText>
                     </View>
                     
-                    {/* Level Display */}
-                    <View style={styles.levelContainer}>
-                        <ThemedText style={[styles.levelLabel, { color: textColor }]}>
-                            Du hast erreicht
-                        </ThemedText>
-                        <View style={[styles.levelBadge, { 
-                            backgroundColor: primaryColor,
-                            shadowColor: primaryColor,
-                        }]}>
-                            <ThemedText style={styles.levelText}>
-                                Level {level}
-                            </ThemedText>
-                        </View>
-                    </View>
+                    {/* Subtitle */}
+                    <ThemedText style={[styles.subtitle, { color: textColor }]}>
+                        {content.subtitle}
+                    </ThemedText>
                     
-                    {/* Motivational Text */}
-                    <ThemedText style={[styles.motivationText, { color: textColor }]}>
-                        Weiter so! Du machst großartige Fortschritte! 💪
+                    {/* Message */}
+                    <ThemedText style={[styles.message, { color: textColor }]}>
+                        {content.message}
                     </ThemedText>
                     
                     {/* Close Hint */}
@@ -131,13 +161,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 20,
         left: 20,
-        opacity: 0.8,
+        opacity: 0.7,
     },
     sparkle2: {
         position: 'absolute',
         top: 30,
         right: 30,
-        opacity: 0.7,
+        opacity: 0.6,
     },
     sparkle3: {
         position: 'absolute',
@@ -151,7 +181,7 @@ const styles = StyleSheet.create({
         right: 25,
         opacity: 0.7,
     },
-    trophyContainer: {
+    iconContainer: {
         width: 140,
         height: 140,
         borderRadius: 70,
@@ -159,52 +189,35 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
         borderWidth: 4,
-        borderColor: '#FFD700',
     },
-    congratsContainer: {
+    titleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 16,
+        marginBottom: 12,
         gap: 12,
     },
-    congratsEmoji: {
-        fontSize: 32,
+    titleEmoji: {
+        fontSize: 28,
     },
-    congratsText: {
+    titleText: {
         fontSize: 32,
         fontWeight: 'bold',
         textAlign: 'center',
     },
-    levelContainer: {
-        alignItems: 'center',
-        marginVertical: 20,
+    subtitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        marginBottom: 16,
+        textAlign: 'center',
     },
-    levelLabel: {
-        fontSize: 16,
-        marginBottom: 12,
-        opacity: 0.8,
-    },
-    levelBadge: {
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 16,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
-    },
-    levelText: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-    },
-    motivationText: {
+    message: {
         fontSize: 16,
         textAlign: 'center',
         marginTop: 16,
         lineHeight: 24,
         opacity: 0.9,
+        paddingHorizontal: 10,
     },
     closeHint: {
         fontSize: 12,
