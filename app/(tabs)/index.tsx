@@ -211,46 +211,52 @@ export default function HomeScreen() {
 
         {/* For You Section */}
         <ThemedText type="subtitle" style={styles.sectionTitle}>Für Dich</ThemedText>
-        {recommendations && (recommendations.plans.length > 0 || recommendations.exercises.length > 0) ? (
+        {recommendations && (recommendations.plans?.length > 0 || recommendations.exercises?.length > 0) ? (
           <View>
-            {recommendations.plans.map((plan: any) => (
-              <TouchableOpacity
-                key={plan.plan_id}
-                onPress={() => router.push(`/training/${plan.plan_id}`)}
-                activeOpacity={0.7}
-                style={{ marginBottom: 12 }}
-              >
-                <ThemedView style={styles.card}>
-                  <View style={styles.row}>
-                    <IconSymbol name="figure.run" size={24} color={primaryColor} />
-                    <View style={{ marginLeft: 15, flex: 1 }}>
-                      <ThemedText type="defaultSemiBold">{plan.name}</ThemedText>
-                      <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Neuer öffentlicher Trainingsplan</ThemedText>
+            {recommendations.plans?.map((plan: any) => {
+              const planId = plan.plan_id || plan.id;
+              return (
+                <TouchableOpacity
+                  key={`plan-${planId}`}
+                  onPress={() => router.push(`/training/${planId}`)}
+                  activeOpacity={0.7}
+                  style={{ marginBottom: 12 }}
+                >
+                  <ThemedView style={styles.card}>
+                    <View style={styles.row}>
+                      <IconSymbol name="figure.run" size={24} color={primaryColor} />
+                      <View style={{ marginLeft: 15, flex: 1 }}>
+                        <ThemedText type="defaultSemiBold">{plan.name}</ThemedText>
+                        <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Neuer öffentlicher Trainingsplan</ThemedText>
+                      </View>
+                      <IconSymbol name="chevron.right" size={20} color="#aaa" />
                     </View>
-                    <IconSymbol name="chevron.right" size={20} color="#aaa" />
-                  </View>
-                </ThemedView>
-              </TouchableOpacity>
-            ))}
-            {recommendations.exercises.map((exercise: any) => (
-              <TouchableOpacity
-                key={exercise.exercise_id}
-                onPress={() => router.push(`/exercise/${exercise.exercise_id}`)}
-                activeOpacity={0.7}
-                style={{ marginBottom: 12 }}
-              >
-                <ThemedView style={styles.card}>
-                  <View style={styles.row}>
-                    <IconSymbol name="dumbbell.fill" size={24} color={primaryColor} />
-                    <View style={{ marginLeft: 15, flex: 1 }}>
-                      <ThemedText type="defaultSemiBold">{exercise.name}</ThemedText>
-                      <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Neue öffentliche Übung</ThemedText>
+                  </ThemedView>
+                </TouchableOpacity>
+              )
+            })}
+            {recommendations.exercises?.map((exercise: any) => {
+              const exerciseId = exercise.exercise_id || exercise.id;
+              return (
+                <TouchableOpacity
+                  key={`ex-${exerciseId}`}
+                  onPress={() => router.push(`/exercise/${exerciseId}`)}
+                  activeOpacity={0.7}
+                  style={{ marginBottom: 12 }}
+                >
+                  <ThemedView style={styles.card}>
+                    <View style={styles.row}>
+                      <IconSymbol name="dumbbell.fill" size={24} color={primaryColor} />
+                      <View style={{ marginLeft: 15, flex: 1 }}>
+                        <ThemedText type="defaultSemiBold">{exercise.name}</ThemedText>
+                        <ThemedText style={{ color: '#aaa', fontSize: 12 }}>Neue öffentliche Übung</ThemedText>
+                      </View>
+                      <IconSymbol name="chevron.right" size={20} color="#aaa" />
                     </View>
-                    <IconSymbol name="chevron.right" size={20} color="#aaa" />
-                  </View>
-                </ThemedView>
-              </TouchableOpacity>
-            ))}
+                  </ThemedView>
+                </TouchableOpacity>
+              )
+            })}
           </View>
         ) : (
           <ThemedView style={styles.card}>

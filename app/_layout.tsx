@@ -68,13 +68,39 @@ import { scoringsService } from '@/services/scorings';
 import { trainingsService } from '@/services/trainings';
 import { exercisesService } from '@/services/exercises';
 import { EXERCISE_KEYS } from '@/hooks/useExercises';
+import { DUMMY_CATEGORIES, DUMMY_EXERCISES, DUMMY_RECOMMENDATIONS, DUMMY_TRAINING_PLANS } from '@/constants/guestData';
 
 function DataPrefetcher() {
-  const { session } = useSession();
+  const { session, isGuest } = useSession();
   const { isOnline } = useOfflineMutation();
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (isGuest) {
+      console.log('Seeding guest data...');
+      // Override default cache limits for guest so they don't expire quickly
+      queryClient.setDefaultOptions({
+        queries: {
+          gcTime: Infinity,
+          staleTime: Infinity,
+        }
+      });
+
+      // Seed dummy exercises
+      queryClient.setQueryData(
+        EXERCISE_KEYS.list(JSON.stringify({ search: '', category: '' })),
+        DUMMY_EXERCISES
+      );
+      queryClient.setQueryData(EXERCISE_KEYS.categories, DUMMY_CATEGORIES);
+
+      // Seed dummy training plans
+      queryClient.setQueryData(TRAINING_KEYS.lists(), DUMMY_TRAINING_PLANS);
+      queryClient.setQueryData(TRAINING_KEYS.recommendations, DUMMY_RECOMMENDATIONS);
+
+      // We skip fetching the actual online data for guests
+      return;
+    }
+
     if (session && isOnline) {
       console.log('Prefetching core data...');
       // Prefetch user profile/level/scoring
@@ -111,7 +137,7 @@ function DataPrefetcher() {
         queryFn: exercisesService.getCategories,
       });
     }
-  }, [session, isOnline, queryClient]);
+  }, [session, isGuest, isOnline, queryClient]);
 
   return null;
 }
