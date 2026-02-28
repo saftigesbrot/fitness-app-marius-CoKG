@@ -68,7 +68,7 @@ import { scoringsService } from '@/services/scorings';
 import { trainingsService } from '@/services/trainings';
 import { exercisesService } from '@/services/exercises';
 import { EXERCISE_KEYS } from '@/hooks/useExercises';
-import { DUMMY_CATEGORIES, DUMMY_EXERCISES, DUMMY_RECOMMENDATIONS, DUMMY_TRAINING_PLANS } from '@/constants/guestData';
+import { DUMMY_EXERCISE_CATEGORIES, DUMMY_PLAN_CATEGORIES, DUMMY_EXERCISES, DUMMY_RECOMMENDATIONS, DUMMY_TRAINING_PLANS } from '@/constants/guestData';
 
 function DataPrefetcher() {
   const { session, isGuest } = useSession();
@@ -91,11 +91,12 @@ function DataPrefetcher() {
         EXERCISE_KEYS.list(JSON.stringify({ search: '', category: '' })),
         DUMMY_EXERCISES
       );
-      queryClient.setQueryData(EXERCISE_KEYS.categories, DUMMY_CATEGORIES);
+      queryClient.setQueryData(EXERCISE_KEYS.categories, DUMMY_EXERCISE_CATEGORIES);
 
       // Seed dummy training plans
       queryClient.setQueryData(TRAINING_KEYS.lists(), DUMMY_TRAINING_PLANS);
       queryClient.setQueryData(TRAINING_KEYS.recommendations, DUMMY_RECOMMENDATIONS);
+      queryClient.setQueryData(TRAINING_KEYS.categories, DUMMY_PLAN_CATEGORIES);
 
       // We skip fetching the actual online data for guests
       return;

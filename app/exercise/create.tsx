@@ -12,10 +12,12 @@ import { exercisesService } from '@/services/exercises';
 import { useOfflineMutation } from '@/context/OfflineMutationContext';
 import { useExerciseCategories, EXERCISE_KEYS } from '@/hooks/useExercises';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSession } from '@/context/AuthContext';
 
 export default function CreateExerciseScreen() {
     const router = useRouter();
     const queryClient = useQueryClient();
+    const { isGuest } = useSession();
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [categoryId, setCategoryId] = useState<number | null>(null);
@@ -70,6 +72,32 @@ export default function CreateExerciseScreen() {
 
         try {
             setSubmitting(true);
+
+            if (isGuest) {
+                const newExId = Date.now();
+                const newEx = {
+                    id: newExId,
+                    exercise_id: newExId,
+                    name,
+                    description,
+                    category: categoryId,
+                    category_detail: categories.find(c => (c.category_id || c.id) === categoryId),
+                    public: isPublic,
+                    image: imageUri,
+                    creator: 'Guest',
+                };
+
+                queryClient.setQueryData(
+                    EXERCISE_KEYS.list(JSON.stringify({ search: '', category: '' })),
+                    (oldData: any) => {
+                        const data = Array.isArray(oldData) ? oldData : [];
+                        return [newEx, ...data];
+                    }
+                );
+
+                router.replace('/(tabs)/explore');
+                return;
+            }
 
             if (!isOnline) {
                 addToQueue('CREATE_EXERCISE', payload);

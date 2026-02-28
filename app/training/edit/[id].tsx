@@ -22,11 +22,13 @@ import { API_URL } from '@/services/api';
 import { useExercises } from '@/hooks/useExercises';
 import { useTrainingCategories, useTrainingPlan, TRAINING_KEYS } from '@/hooks/useTrainingPlans';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSession } from '@/context/AuthContext';
 
 export default function EditTrainingPlanScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const queryClient = useQueryClient();
+    const { isGuest } = useSession();
 
     // Form State
     const [name, setName] = useState('');
@@ -127,7 +129,7 @@ export default function EditTrainingPlanScreen() {
 
         setSubmitting(true);
         try {
-            const exerciseIds = selectedExercises.map(ex => ex.exercise_id);
+            const exerciseIds = selectedExercises.map(ex => ex.exercise_id || ex.id);
 
             const payload = {
                 plan_id: id,
@@ -138,6 +140,46 @@ export default function EditTrainingPlanScreen() {
                 order: exerciseIds,
                 // description is optional on backend, add if needed later
             };
+
+            if (isGuest) {
+                queryClient.setQueryData(TRAINING_KEYS.lists(), (oldData: any[]) => {
+                    if (!oldData) return oldData;
+                    return oldData.map(plan => {
+                        if (plan.id === Number(id) || plan.plan_id === Number(id)) {
+                            return {
+                                ...plan,
+                                name,
+                                category: selectedCategory,
+                                category_detail: categories.find(c => (c.category_id || c.id) === selectedCategory),
+                                public: isPublic,
+                                break_time: parseInt(breakTime) || 60,
+                                order: exerciseIds,
+                                exercises: selectedExercises
+                            };
+                        }
+                        return plan;
+                    });
+                });
+
+                // Also update detail cache if it exists
+                queryClient.setQueryData(TRAINING_KEYS.detail(Number(id)), (oldPlan: any) => {
+                    if (!oldPlan) return oldPlan;
+                    return {
+                        ...oldPlan,
+                        name,
+                        category: selectedCategory,
+                        category_detail: categories.find(c => (c.category_id || c.id) === selectedCategory),
+                        public: isPublic,
+                        break_time: parseInt(breakTime) || 60,
+                        order: exerciseIds,
+                        exercises: selectedExercises
+                    };
+                });
+
+                router.dismissAll();
+                router.push('/(tabs)/explore');
+                return;
+            }
 
             await trainingsService.editTrainingPlan(payload);
 
@@ -221,7 +263,7 @@ export default function EditTrainingPlanScreen() {
                 <ThemedText type="subtitle" style={styles.sectionHeader}>Ausgewählte Übungen ({selectedExercises.length})</ThemedText>
                 <View style={styles.selectedList}>
                     {selectedExercises.map((ex, index) => (
-                        <View key={`${ex.exercise_id}_${index}`} style={[styles.selectedItem, { backgroundColor: cardColor }]}>
+                        <View key={`${ex.exercise_id || ex.id}_${index}`} style={[styles.selectedItem, { backgroundColor: cardColor }]}>
                             <ThemedText style={styles.numberBadge}>{index + 1}</ThemedText>
                             <ThemedText style={{ flex: 1, marginLeft: 10 }}>{ex.name}</ThemedText>
 
@@ -256,7 +298,7 @@ export default function EditTrainingPlanScreen() {
                 <View style={styles.resultsList}>
                     {filteredExercises.map((ex) => (
                         <TouchableOpacity
-                            key={ex.exercise_id}
+                            key={ex.exercise_id || ex.id}
                             style={[styles.resultItem, { borderBottomColor: cardColor }]}
                             onPress={() => toggleExercise(ex)}
                         >

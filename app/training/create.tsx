@@ -23,10 +23,12 @@ import { useOfflineMutation } from '@/context/OfflineMutationContext';
 import { useExercises } from '@/hooks/useExercises';
 import { useTrainingCategories, TRAINING_KEYS } from '@/hooks/useTrainingPlans';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSession } from '@/context/AuthContext';
 
 export default function CreateTrainingPlanScreen() {
     const router = useRouter();
     const queryClient = useQueryClient();
+    const { isGuest } = useSession();
     const [name, setName] = useState('');
     const [breakTime, setBreakTime] = useState('60');
     const [isPublic, setIsPublic] = useState(false);
@@ -113,7 +115,7 @@ export default function CreateTrainingPlanScreen() {
             return;
         }
 
-        const exerciseIds = selectedExercises.map(ex => ex.exercise_id);
+        const exerciseIds = selectedExercises.map(ex => ex.exercise_id || ex.id);
 
         const payload = {
             name,
@@ -126,6 +128,33 @@ export default function CreateTrainingPlanScreen() {
 
         setSubmitting(true);
         try {
+
+            if (isGuest) {
+                // Manually augment the cache for guests
+                const newPlanId = Date.now();
+                const newPlan = {
+                    id: newPlanId,
+                    plan_id: newPlanId,
+                    name,
+                    description: 'Created as Guest',
+                    creator_name: 'Guest',
+                    category: selectedCategory,
+                    category_detail: categories.find(c => (c.category_id || c.id) === selectedCategory),
+                    public: isPublic,
+                    break_time: parseInt(breakTime) || 60,
+                    order: exerciseIds,
+                    exercises: selectedExercises
+                };
+
+                queryClient.setQueryData(TRAINING_KEYS.lists(), (oldData: any) => {
+                    const data = Array.isArray(oldData) ? oldData : [];
+                    return [newPlan, ...data];
+                });
+
+                router.dismissAll();
+                router.push('/(tabs)/explore');
+                return;
+            }
 
             if (!isOnline) {
                 addToQueue('CREATE_TRAINING_PLAN', payload);
@@ -222,7 +251,7 @@ export default function CreateTrainingPlanScreen() {
                 <ThemedText type="subtitle" style={styles.sectionHeader}>Ausgewählte Übungen ({selectedExercises.length})</ThemedText>
                 <View style={styles.selectedList}>
                     {selectedExercises.map((ex, index) => (
-                        <View key={`${ex.exercise_id}_${index}`} style={[styles.selectedItem, { backgroundColor: cardColor }]}>
+                        <View key={`${ex.exercise_id || ex.id}_${index}`} style={[styles.selectedItem, { backgroundColor: cardColor }]}>
                             <ThemedText style={styles.numberBadge}>{index + 1}</ThemedText>
                             <ThemedText style={{ flex: 1, marginLeft: 10 }}>{ex.name}</ThemedText>
 
@@ -260,7 +289,7 @@ export default function CreateTrainingPlanScreen() {
                 <View style={styles.resultsList}>
                     {filteredExercises.map((ex) => (
                         <TouchableOpacity
-                            key={ex.exercise_id}
+                            key={ex.exercise_id || ex.id}
                             style={[styles.resultItem, { borderBottomColor: cardColor }]}
                             onPress={() => toggleExercise(ex)}
                         >

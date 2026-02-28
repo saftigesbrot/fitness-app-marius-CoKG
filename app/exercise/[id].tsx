@@ -98,7 +98,7 @@ export default function ExerciseDetailScreen() {
                     <View style={styles.metaRow}>
                         <View style={[styles.badge, { backgroundColor: cardColor }]}>
                             <ThemedText style={styles.badgeText}>
-                                {exercise.category_detail?.name || exercise.category || 'Allgemein'}
+                                {exercise.category_detail?.name || exercise.category_name || exercise.category || 'Allgemein'}
                             </ThemedText>
                         </View>
 
