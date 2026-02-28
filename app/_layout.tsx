@@ -58,8 +58,6 @@ function RootLayoutNav() {
 }
 
 import { QueryProvider } from '@/context/QueryContext';
-import { OfflineMutationProvider, useOfflineMutation } from '@/context/OfflineMutationContext';
-import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useQueryClient } from '@tanstack/react-query';
 import { USER_KEYS } from '@/hooks/useProfile';
 import { TRAINING_KEYS } from '@/hooks/useTrainingPlans';
@@ -72,7 +70,6 @@ import { DUMMY_EXERCISE_CATEGORIES, DUMMY_PLAN_CATEGORIES, DUMMY_EXERCISES, DUMM
 
 function DataPrefetcher() {
   const { session, isGuest } = useSession();
-  const { isOnline } = useOfflineMutation();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -102,7 +99,7 @@ function DataPrefetcher() {
       return;
     }
 
-    if (session && isOnline) {
+    if (session && !isGuest) {
       console.log('Prefetching core data...');
       // Prefetch user profile/level/scoring
       queryClient.prefetchQuery({
@@ -138,7 +135,7 @@ function DataPrefetcher() {
         queryFn: exercisesService.getCategories,
       });
     }
-  }, [session, isGuest, isOnline, queryClient]);
+  }, [session, isGuest, queryClient]);
 
   return null;
 }
@@ -146,13 +143,10 @@ function DataPrefetcher() {
 export default function RootLayout() {
   return (
     <QueryProvider>
-      <OfflineMutationProvider>
-        <SessionProvider>
-          <DataPrefetcher />
-          <OfflineIndicator />
-          <RootLayoutNav />
-        </SessionProvider>
-      </OfflineMutationProvider>
+      <SessionProvider>
+        <DataPrefetcher />
+        <RootLayoutNav />
+      </SessionProvider>
     </QueryProvider>
   );
 }

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState, useMemo } from 'react';
-import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import { useState, useMemo } from 'react';
+import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -9,7 +9,6 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTrainingPlans } from '@/hooks/useTrainingPlans';
 import { useExercises, useExerciseCategories } from '@/hooks/useExercises';
-import { useOfflineMutation } from '@/context/OfflineMutationContext';
 
 export default function ExploreScreen() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -32,23 +31,9 @@ export default function ExploreScreen() {
 
   // Filtered/Searched data locally for offline support
   const { data: allExercises = [], isLoading: isLoadingExercises } = useExercises('', '');
-  const { queue } = useOfflineMutation();
 
   const filteredExercises = useMemo(() => {
     let result = [...allExercises];
-
-    // Add optimistic offline exercises
-    const offlineExercises = queue
-      .filter(action => action.type === 'CREATE_EXERCISE')
-      .map(action => ({
-        exercise_id: `offline-${action.id}`, // Mock ID
-        name: action.payload.name,
-        category: action.payload.category,
-        image: action.payload.imageUri, // Show local URI
-        category_detail: categories.find((c: any) => (c.category_id || c.id) === action.payload.category)
-      }));
-
-    result = [...offlineExercises, ...result];
 
     if (selectedCategoryName) {
       result = result.filter((ex: any) => ex.category_detail?.name === selectedCategoryName || ex.category === selectedCategoryName);
@@ -63,38 +48,18 @@ export default function ExploreScreen() {
   const searchResultsPlans = useMemo(() => {
     let allPlans = [...plans];
 
-    // Add optimistic offline plans
-    const offlinePlans = queue
-      .filter(action => action.type === 'CREATE_TRAINING_PLAN')
-      .map(action => ({
-        plan_id: `offline-${action.id}`,
-        name: action.payload.name,
-        public: action.payload.public,
-        username: 'Me (Offline)'
-      }));
-
-    allPlans = [...offlinePlans, ...allPlans];
-
     if (!searchQuery) return allPlans;
     const lowerQuery = searchQuery.toLowerCase();
     return allPlans.filter((plan: any) => plan.name.toLowerCase().includes(lowerQuery));
-  }, [plans, searchQuery, queue]);
+  }, [plans, searchQuery]);
 
   const loading = isLoadingPlans || isLoadingCategories || isLoadingExercises;
 
   const handlePlanPress = (id: string | number) => {
-    if (typeof id === 'string' && id.startsWith('offline-')) {
-      Alert.alert('Offline', 'Dieser Plan wird synchronisiert und ist noch nicht im Detail verfügbar.');
-      return;
-    }
     router.push(`/training/${id}`);
   };
 
   const handleExercisePress = (id: string | number) => {
-    if (typeof id === 'string' && id.startsWith('offline-')) {
-      Alert.alert('Offline', 'Diese Übung wird synchronisiert und ist im Detail verfügbar, sobald du online bist.');
-      return;
-    }
     router.push(`/exercise/${id}`);
   };
 

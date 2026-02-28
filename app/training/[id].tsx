@@ -1,7 +1,6 @@
-
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -11,7 +10,6 @@ import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
 import { useTrainingPlan } from '@/hooks/useTrainingPlans';
 import { useExercises } from '@/hooks/useExercises';
-import { useOfflineMutation } from '@/context/OfflineMutationContext';
 import { useSession } from '@/context/AuthContext';
 
 export default function TrainingPlanDetailScreen() {
@@ -23,7 +21,6 @@ export default function TrainingPlanDetailScreen() {
     const [loading, setLoading] = useState(true);
     const { data: planData, isLoading: isLoadingPlan } = useTrainingPlan(Number(id));
     const { data: allExercisesData } = useExercises('', '');
-    const { isOnline } = useOfflineMutation();
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
@@ -53,7 +50,7 @@ export default function TrainingPlanDetailScreen() {
     const handleStartTraining = async () => {
         if (!plan) return;
         try {
-            if (!isOnline || isGuest) {
+            if (isGuest) {
                 router.push(`/workout/${plan.plan_id || plan.id}`);
                 return;
             }
@@ -63,8 +60,10 @@ export default function TrainingPlanDetailScreen() {
         } catch (error: any) {
             console.error("Failed to start training", error);
             if (error.isAxiosError && !error.response) {
-                // Network error, proceed offline
-                router.push(`/workout/${plan.plan_id || plan.id}`);
+                // Network error, show alert
+                Alert.alert('Keine Verbindung', 'Training konnte nicht gestartet werden, da keine Verbindung besteht.');
+            } else {
+                Alert.alert('Fehler', 'Fehler beim Starten des Trainings.');
             }
         }
     };

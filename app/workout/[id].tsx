@@ -18,7 +18,6 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
-import { useOfflineMutation } from '@/context/OfflineMutationContext';
 import { useTrainingPlan } from '@/hooks/useTrainingPlans';
 import { useExercises } from '@/hooks/useExercises';
 import { useSession } from '@/context/AuthContext';
@@ -137,7 +136,6 @@ export default function TrainingSessionScreen() {
         }
     };
 
-    const { isOnline, addToQueue } = useOfflineMutation();
     const { isGuest } = useSession();
 
     const finishTraining = async () => {
@@ -176,10 +174,7 @@ export default function TrainingSessionScreen() {
 
             console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
-            if (!isOnline || isGuest) {
-                if (!isGuest) {
-                    addToQueue('SAVE_TRAINING_SESSION', payload);
-                }
+            if (isGuest) {
                 router.replace({
                     pathname: '/workout/finished',
                     params: { xp: 0, offline: 'true' }
@@ -203,11 +198,7 @@ export default function TrainingSessionScreen() {
         } catch (error: any) {
             console.error("finishTraining error:", error);
             if ((error.isAxiosError || error.name === 'AxiosError' || error.message === 'Network Error') && !error.response) {
-                addToQueue('SAVE_TRAINING_SESSION', payload);
-                router.replace({
-                    pathname: '/workout/finished',
-                    params: { xp: 0, offline: 'true' }
-                });
+                Alert.alert('Keine Verbindung', 'Training konnte nicht gespeichert werden, da keine Verbindung besteht.');
             } else {
                 Alert.alert('Error', 'Failed to save training session');
             }

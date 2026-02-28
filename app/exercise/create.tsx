@@ -9,7 +9,6 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { exercisesService } from '@/services/exercises';
-import { useOfflineMutation } from '@/context/OfflineMutationContext';
 import { useExerciseCategories, EXERCISE_KEYS } from '@/hooks/useExercises';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/context/AuthContext';
@@ -54,8 +53,6 @@ export default function CreateExerciseScreen() {
         }
     };
 
-    const { isOnline, addToQueue } = useOfflineMutation();
-
     const handleSubmit = async () => {
         if (!name || !categoryId) {
             Alert.alert('Fehler', 'Name und Kategorie sind erforderlich.');
@@ -99,12 +96,6 @@ export default function CreateExerciseScreen() {
                 return;
             }
 
-            if (!isOnline) {
-                addToQueue('CREATE_EXERCISE', payload);
-                router.replace('/(tabs)/explore');
-                return;
-            }
-
             const formData = new FormData();
             formData.append('name', name);
             formData.append('description', description);
@@ -135,8 +126,7 @@ export default function CreateExerciseScreen() {
             console.error('Error creating exercise:', error);
 
             if ((error.isAxiosError || error.name === 'AxiosError' || error.message === 'Network Error') && !error.response) {
-                addToQueue('CREATE_EXERCISE', payload);
-                router.replace('/(tabs)/explore');
+                Alert.alert('Keine Verbindung', 'Übung konnte nicht erstellt werden, da keine Verbindung besteht.');
                 return;
             }
 

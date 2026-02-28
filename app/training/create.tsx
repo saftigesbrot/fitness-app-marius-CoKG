@@ -19,7 +19,6 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
 import { API_URL } from '@/services/api';
-import { useOfflineMutation } from '@/context/OfflineMutationContext';
 import { useExercises } from '@/hooks/useExercises';
 import { useTrainingCategories, TRAINING_KEYS } from '@/hooks/useTrainingPlans';
 import { useQueryClient } from '@tanstack/react-query';
@@ -99,8 +98,6 @@ export default function CreateTrainingPlanScreen() {
         setSelectedExercises(newExercises);
     };
 
-    const { isOnline, addToQueue } = useOfflineMutation();
-
     const handleCreate = async () => {
         if (!name.trim()) {
             Alert.alert('Validation', 'Please enter a plan name');
@@ -156,13 +153,6 @@ export default function CreateTrainingPlanScreen() {
                 return;
             }
 
-            if (!isOnline) {
-                addToQueue('CREATE_TRAINING_PLAN', payload);
-                router.dismissAll();
-                router.push('/(tabs)/explore');
-                return;
-            }
-
             await trainingsService.createTrainingPlan(payload);
 
             // Invalidate cache to refetch the new list
@@ -174,9 +164,7 @@ export default function CreateTrainingPlanScreen() {
         } catch (error: any) {
             console.error('Create error:', error);
             if ((error.isAxiosError || error.name === 'AxiosError' || error.message === 'Network Error') && !error.response) {
-                addToQueue('CREATE_TRAINING_PLAN', payload);
-                router.dismissAll();
-                router.push('/(tabs)/explore');
+                Alert.alert('Keine Verbindung', 'Plan konnte nicht erstellt werden, da keine Verbindung besteht.');
             } else {
                 Alert.alert('Error', 'Failed to create plan');
             }

@@ -9,7 +9,8 @@ type ProgressBarProps = {
 
 export function ProgressBar({ progress, color, height = 8 }: ProgressBarProps) {
     const backgroundColor = useThemeColor({ light: '#e0e0e0', dark: '#333' }, 'background');
-    const itemsColor = color || useThemeColor({}, 'tint');
+    const defaultTint = useThemeColor({}, 'tint');
+    const itemsColor = color || defaultTint;
 
     const clampedProgress = Math.min(Math.max(progress, 0), 1);
 

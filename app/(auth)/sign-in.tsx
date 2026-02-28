@@ -105,7 +105,7 @@ export default function SignIn() {
                     style={styles.linkButton}
                     onPress={() => router.push('/(auth)/sign-up')}
                 >
-                    <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
+                    <Text style={styles.linkText}>Don&apos;t have an account? Sign Up</Text>
                 </TouchableOpacity>
             </View>
         </View>
