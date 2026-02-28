@@ -12,10 +12,12 @@ import { API_URL } from '@/services/api';
 import { useTrainingPlan } from '@/hooks/useTrainingPlans';
 import { useExercises } from '@/hooks/useExercises';
 import { useOfflineMutation } from '@/context/OfflineMutationContext';
+import { useSession } from '@/context/AuthContext';
 
 export default function TrainingPlanDetailScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const { isGuest } = useSession();
     const [plan, setPlan] = useState<any>(null);
     const [exercises, setExercises] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -51,18 +53,18 @@ export default function TrainingPlanDetailScreen() {
     const handleStartTraining = async () => {
         if (!plan) return;
         try {
-            if (!isOnline) {
-                router.push(`/workout/${plan.plan_id}`);
+            if (!isOnline || isGuest) {
+                router.push(`/workout/${plan.plan_id || plan.id}`);
                 return;
             }
             // Call API to start training session
-            await trainingsService.startTraining(plan.plan_id);
-            router.push(`/workout/${plan.plan_id}`);
+            await trainingsService.startTraining(plan.plan_id || plan.id);
+            router.push(`/workout/${plan.plan_id || plan.id}`);
         } catch (error: any) {
             console.error("Failed to start training", error);
             if (error.isAxiosError && !error.response) {
                 // Network error, proceed offline
-                router.push(`/workout/${plan.plan_id}`);
+                router.push(`/workout/${plan.plan_id || plan.id}`);
             }
         }
     };

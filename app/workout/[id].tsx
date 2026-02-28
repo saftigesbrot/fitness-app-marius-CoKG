@@ -21,6 +21,7 @@ import { API_URL } from '@/services/api';
 import { useOfflineMutation } from '@/context/OfflineMutationContext';
 import { useTrainingPlan } from '@/hooks/useTrainingPlans';
 import { useExercises } from '@/hooks/useExercises';
+import { useSession } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -137,6 +138,7 @@ export default function TrainingSessionScreen() {
     };
 
     const { isOnline, addToQueue } = useOfflineMutation();
+    const { isGuest } = useSession();
 
     const finishTraining = async () => {
         // Construct Execution Data
@@ -174,8 +176,10 @@ export default function TrainingSessionScreen() {
 
             console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
-            if (!isOnline) {
-                addToQueue('SAVE_TRAINING_SESSION', payload);
+            if (!isOnline || isGuest) {
+                if (!isGuest) {
+                    addToQueue('SAVE_TRAINING_SESSION', payload);
+                }
                 router.replace({
                     pathname: '/workout/finished',
                     params: { xp: 0, offline: 'true' }
