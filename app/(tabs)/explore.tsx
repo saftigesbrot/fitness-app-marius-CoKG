@@ -121,7 +121,7 @@ export default function ExploreScreen() {
                 <ThemedText type="subtitle" style={styles.sectionTitle}>Gefundene Pläne</ThemedText>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                   {searchResultsPlans.map((plan: any) => (
-                    <TouchableOpacity key={plan.plan_id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => handlePlanPress(plan.plan_id || plan.id)}>
+                    <TouchableOpacity key={plan.plan_id || plan.id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => handlePlanPress(plan.plan_id || plan.id)}>
                       <Image source={{ uri: `https://source.unsplash.com/random/500x300?gym,${plan.id || plan.plan_id}` }} style={styles.planImage} />
                       <View style={styles.planOverlay}>
                         <ThemedText style={styles.planSubtitle} numberOfLines={1}>{plan.name}</ThemedText>
@@ -153,7 +153,7 @@ export default function ExploreScreen() {
             <ThemedText type="subtitle" style={styles.sectionTitle}>Meine Trainingspläne</ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
               {searchResultsPlans.map((plan: any) => (
-                <TouchableOpacity key={plan.plan_id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => handlePlanPress(plan.plan_id || plan.id)}>
+                <TouchableOpacity key={plan.plan_id || plan.id} style={[styles.planCard, { backgroundColor: cardColor }]} onPress={() => handlePlanPress(plan.plan_id || plan.id)}>
                   <Image source={{ uri: `https://source.unsplash.com/random/500x300?gym,${plan.id || plan.plan_id}` }} style={styles.planImage} />
                   <View style={styles.planOverlay}>
                     <ThemedText style={styles.planSubtitle} numberOfLines={1}>{plan.name}</ThemedText>
@@ -208,7 +208,7 @@ export default function ExploreScreen() {
 
         <View style={styles.exerciseList}>
           {filteredExercises.slice(0, selectedCategory ? 10 : 5).map((ex: any, index: number) => (
-            <TouchableOpacity key={ex.exercise_id || `offline-${index}`} onPress={() => handleExercisePress(ex.exercise_id)}>
+            <TouchableOpacity key={ex.exercise_id || ex.id || `offline-${index}`} onPress={() => handleExercisePress(ex.exercise_id || ex.id)}>
               <ThemedView style={[styles.exerciseItem, { backgroundColor: cardColor }]}>
                 <View style={styles.exerciseIconBg}>
                   <IconSymbol name="dumbbell.fill" size={20} color="#000" />
