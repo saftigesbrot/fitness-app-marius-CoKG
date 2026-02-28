@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +16,8 @@ export default function LeaderboardScreen() {
     const [filter, setFilter] = useState<TimeFilter>('Täglich');
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const { username } = useSession();
+    const { username, isGuest, session, signOut } = useSession();
+    const router = useRouter();
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
@@ -23,8 +25,10 @@ export default function LeaderboardScreen() {
     const textColor = useThemeColor({}, 'text');
 
     useEffect(() => {
-        loadLeaderboard();
-    }, [filter, mode]);
+        if (session && !isGuest) {
+            loadLeaderboard();
+        }
+    }, [filter, mode, isGuest, session]);
 
     const loadLeaderboard = async () => {
         try {
@@ -92,66 +96,88 @@ export default function LeaderboardScreen() {
             <View style={styles.container}>
                 <ThemedText type="title" style={styles.headerTitle}>Leaderboard</ThemedText>
 
-                {/* Mode Toggle */}
-                <View style={[styles.toggleContainer, { backgroundColor: cardColor }]}>
-                    <TouchableOpacity
-                        style={[styles.toggleButton, mode === 'score' && { backgroundColor: primaryColor }]}
-                        onPress={() => setMode('score')}>
-                        <ThemedText style={mode === 'score' ? styles.toggleTextActive : styles.toggleText}>Punkte</ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.toggleButton, mode === 'level' && { backgroundColor: primaryColor }]}
-                        onPress={() => setMode('level')}>
-                        <ThemedText style={mode === 'level' ? styles.toggleTextActive : styles.toggleText}>Level</ThemedText>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Filter Tabs - Only show in Score Mode */}
-                {mode === 'score' && (
-                    <View style={[styles.filterContainer, { backgroundColor: cardColor }]}>
-                        {(['Täglich', 'Wöchentlich', 'Monatlich'] as TimeFilter[]).map((f) => (
-                            <TouchableOpacity
-                                key={f}
-                                style={[
-                                    styles.filterButton,
-                                    filter === f && { backgroundColor: '#666' } // Active state
-                                ]}
-                                onPress={() => setFilter(f)}>
-                                <ThemedText style={[styles.filterText, filter === f && styles.filterTextActive]}>
-                                    {f}
-                                </ThemedText>
-                            </TouchableOpacity>
-                        ))}
+                {isGuest ? (
+                    <View style={styles.guestContainer}>
+                        <IconSymbol name="lock.fill" size={64} color={primaryColor} />
+                        <ThemedText type="subtitle" style={styles.guestTitle}>Nur für angemeldete Nutzer</ThemedText>
+                        <ThemedText style={styles.guestText}>
+                            Das Leaderboard ist nur verfügbar, wenn du mit einem Account anmeldet bist.
+                            Melde dich an, um dich mit anderen zu messen!
+                        </ThemedText>
+                        <TouchableOpacity
+                            style={[styles.loginButton, { backgroundColor: primaryColor }]}
+                            onPress={() => {
+                                signOut();
+                                router.replace('/(auth)/sign-in');
+                            }}
+                        >
+                            <ThemedText style={styles.loginButtonText}>Jetzt Anmelden</ThemedText>
+                        </TouchableOpacity>
                     </View>
-                )}
-
-                {/* My Rank Summary */}
-                <View style={styles.summaryContainer}>
-                    {(() => {
-                        const myRank = users.find(u => u.isMe);
-                        if (myRank) {
-                            return (
-                                <ThemedText style={styles.summaryText}>
-                                    Mein Rang: <ThemedText style={{ color: '#4CD964', fontWeight: 'bold' }}>{myRank.rank}. ({myRank.points})</ThemedText>
-                                </ThemedText>
-                            );
-                        }
-                        return <ThemedText style={styles.summaryText}>Du bist noch nicht im Ranking.</ThemedText>;
-                    })()}
-                </View>
-
-                {/* List */}
-                {loading ? (
-                    <ActivityIndicator size="large" color={primaryColor} />
                 ) : (
-                    <FlatList
-                        data={users}
-                        renderItem={renderItem}
-                        keyExtractor={(item, index) => item.name + index}
-                        contentContainerStyle={styles.listContent}
-                        showsVerticalScrollIndicator={false}
-                        ListEmptyComponent={<ThemedText style={{ textAlign: 'center', marginTop: 20, color: '#aaa' }}>Keine Einträge gefunden.</ThemedText>}
-                    />
+                    <>
+                        {/* Mode Toggle */}
+                        <View style={[styles.toggleContainer, { backgroundColor: cardColor }]}>
+                            <TouchableOpacity
+                                style={[styles.toggleButton, mode === 'score' && { backgroundColor: primaryColor }]}
+                                onPress={() => setMode('score')}>
+                                <ThemedText style={mode === 'score' ? styles.toggleTextActive : styles.toggleText}>Punkte</ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.toggleButton, mode === 'level' && { backgroundColor: primaryColor }]}
+                                onPress={() => setMode('level')}>
+                                <ThemedText style={mode === 'level' ? styles.toggleTextActive : styles.toggleText}>Level</ThemedText>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Filter Tabs - Only show in Score Mode */}
+                        {mode === 'score' && (
+                            <View style={[styles.filterContainer, { backgroundColor: cardColor }]}>
+                                {(['Täglich', 'Wöchentlich', 'Monatlich'] as TimeFilter[]).map((f) => (
+                                    <TouchableOpacity
+                                        key={f}
+                                        style={[
+                                            styles.filterButton,
+                                            filter === f && { backgroundColor: '#666' } // Active state
+                                        ]}
+                                        onPress={() => setFilter(f)}>
+                                        <ThemedText style={[styles.filterText, filter === f && styles.filterTextActive]}>
+                                            {f}
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* My Rank Summary */}
+                        <View style={styles.summaryContainer}>
+                            {(() => {
+                                const myRank = users.find(u => u.isMe);
+                                if (myRank) {
+                                    return (
+                                        <ThemedText style={styles.summaryText}>
+                                            Mein Rang: <ThemedText style={{ color: '#4CD964', fontWeight: 'bold' }}>{myRank.rank}. ({myRank.points})</ThemedText>
+                                        </ThemedText>
+                                    );
+                                }
+                                return <ThemedText style={styles.summaryText}>Du bist noch nicht im Ranking.</ThemedText>;
+                            })()}
+                        </View>
+
+                        {/* List */}
+                        {loading ? (
+                            <ActivityIndicator size="large" color={primaryColor} />
+                        ) : (
+                            <FlatList
+                                data={users}
+                                renderItem={renderItem}
+                                keyExtractor={(item, index) => item.name + index}
+                                contentContainerStyle={styles.listContent}
+                                showsVerticalScrollIndicator={false}
+                                ListEmptyComponent={<ThemedText style={{ textAlign: 'center', marginTop: 20, color: '#aaa' }}>Keine Einträge gefunden.</ThemedText>}
+                            />
+                        )}
+                    </>
                 )}
             </View>
         </SafeAreaView>
@@ -248,4 +274,31 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.8)',
         fontSize: 12,
     },
+    guestContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    guestTitle: {
+        marginTop: 20,
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    guestText: {
+        textAlign: 'center',
+        color: '#aaa',
+        marginBottom: 30,
+        lineHeight: 22,
+    },
+    loginButton: {
+        paddingVertical: 14,
+        paddingHorizontal: 32,
+        borderRadius: 12,
+    },
+    loginButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    }
 });
