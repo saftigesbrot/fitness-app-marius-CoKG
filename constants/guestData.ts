@@ -56,28 +56,8 @@ export const DUMMY_TRAINING_PLANS = [
         name: 'Ganzkörper Workout',
         description: 'Ein perfekter Einstieg für Gäste, um alle Muskelgruppen zu trainieren.',
         creator_name: 'fitnessapp',
-        exercises: [
-            {
-                exercise: DUMMY_EXERCISES[0],
-                order: 1,
-                sets: [{ set_number: 1, reps: 10, weight: 0 }, { set_number: 2, reps: 10, weight: 0 }, { set_number: 3, reps: 10, weight: 0 }]
-            },
-            {
-                exercise: DUMMY_EXERCISES[2],
-                order: 2,
-                sets: [{ set_number: 1, reps: 15, weight: 0 }, { set_number: 2, reps: 15, weight: 0 }, { set_number: 3, reps: 15, weight: 0 }]
-            },
-            {
-                exercise: DUMMY_EXERCISES[1],
-                order: 3,
-                sets: [{ set_number: 1, reps: 8, weight: 0 }, { set_number: 2, reps: 8, weight: 0 }, { set_number: 3, reps: 8, weight: 0 }]
-            },
-            {
-                exercise: DUMMY_EXERCISES[3],
-                order: 4,
-                sets: [{ set_number: 1, reps: 30, weight: 0, duration: 60 }, { set_number: 2, reps: 30, weight: 0, duration: 60 }]
-            }
-        ]
+        order: [1, 3, 2, 4],
+        exercises: [DUMMY_EXERCISES[0], DUMMY_EXERCISES[2], DUMMY_EXERCISES[1], DUMMY_EXERCISES[3]]
     }
 ];
 

@@ -15,11 +15,18 @@ const api = axios.create({
 // Request interceptor to add Authorization header
 api.interceptors.request.use(
     async (config) => {
+        let isGuestStr = null;
         let token = null;
         if (Platform.OS === 'web') {
             token = localStorage.getItem('access_token');
+            isGuestStr = localStorage.getItem('is_guest');
         } else {
             token = await SecureStore.getItemAsync('access_token');
+            isGuestStr = await SecureStore.getItemAsync('is_guest');
+        }
+
+        if (isGuestStr === 'true') {
+            return Promise.reject(new axios.Cancel('Guest mode: API disabled'));
         }
 
         if (token) {

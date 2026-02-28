@@ -91,10 +91,12 @@ export default function TrainingSessionScreen() {
                 }
 
                 if (planData.exercises && Array.isArray(planData.exercises) && planData.exercises.length > 0 && exercises.length === 0) {
-                    setExercises(planData.exercises);
+                    const normalized = planData.exercises.map((e: any) => e.exercise ? e.exercise : e);
+                    setExercises(normalized);
                 }
             } else if (Array.isArray(planData.exercises)) {
-                setExercises(planData.exercises);
+                const normalized = planData.exercises.map((e: any) => e.exercise ? e.exercise : e);
+                setExercises(normalized);
             }
 
             setIsActive(true); // Start timer automatically

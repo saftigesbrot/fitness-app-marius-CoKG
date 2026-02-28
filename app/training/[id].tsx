@@ -31,22 +31,17 @@ export default function TrainingPlanDetailScreen() {
         if (planData) {
             setPlan(planData);
             setLoading(false);
-            if (planData.order && Array.isArray(planData.order)) {
-                if (allExercisesData && Array.isArray(allExercisesData)) {
-                    // Try to map from cache first
-                    const mappedExercises = planData.order.map((exId: number) => {
-                        return allExercisesData.find(ex => ex.exercise_id === exId || ex.id === exId);
-                    }).filter(Boolean);
 
-                    if (mappedExercises.length > 0) {
-                        setExercises(mappedExercises);
-                    }
-                }
-
-                // If the plan has full exercise objects in 'exercises' field, use them
-                if (planData.exercises && Array.isArray(planData.exercises) && planData.exercises.length > 0 && exercises.length === 0) {
-                    setExercises(planData.exercises);
-                }
+            if (planData.exercises && Array.isArray(planData.exercises) && planData.exercises.length > 0) {
+                const normalized = planData.exercises.map((e: any) => e.exercise ? e.exercise : e);
+                setExercises(normalized);
+            } else if (planData.order && Array.isArray(planData.order) && allExercisesData && Array.isArray(allExercisesData)) {
+                const mappedExercises = planData.order.map((exId: number) => {
+                    return allExercisesData.find(ex => ex.exercise_id === exId || ex.id === exId);
+                }).filter(Boolean);
+                setExercises(mappedExercises);
+            } else {
+                setExercises([]);
             }
         } else if (!isLoadingPlan) {
             setLoading(false);
@@ -122,7 +117,7 @@ export default function TrainingPlanDetailScreen() {
                 <View style={styles.section}>
                     <View style={styles.infoRow}>
                         <IconSymbol name="clock.fill" size={20} color="#aaa" />
-                        <ThemedText style={styles.infoText}>Pausenzeit: {plan.break_time} sek</ThemedText>
+                        <ThemedText style={styles.infoText}>Pausenzeit: {plan.break_time || 0} sek</ThemedText>
                     </View>
                     <View style={styles.infoRow}>
                         <IconSymbol name="lock.fill" size={20} color="#aaa" />
@@ -135,9 +130,9 @@ export default function TrainingPlanDetailScreen() {
                 <View style={styles.exercisesList}>
                     {exercises.map((ex, index) => (
                         <TouchableOpacity
-                            key={`${ex.exercise_id}-${index}`}
+                            key={`${ex.exercise_id || ex.id}-${index}`}
                             style={[styles.exerciseItem, { backgroundColor: cardColor }]}
-                            onPress={() => router.push(`/exercise/${ex.exercise_id}`)}
+                            onPress={() => router.push(`/exercise/${ex.exercise_id || ex.id}`)}
                         >
                             <Image
                                 source={{ uri: ex.image?.startsWith('http') ? ex.image : `${API_URL}${ex.image}` }}
@@ -145,7 +140,7 @@ export default function TrainingPlanDetailScreen() {
                             />
                             <View style={styles.exerciseInfo}>
                                 <ThemedText type="defaultSemiBold">{ex.name}</ThemedText>
-                                <ThemedText style={styles.exerciseCategory}>{ex.category_detail?.name}</ThemedText>
+                                <ThemedText style={styles.exerciseCategory}>{ex.category_detail?.name || ex.category_name}</ThemedText>
                             </View>
                             <IconSymbol name="chevron.right" size={20} color="#aaa" />
                         </TouchableOpacity>
