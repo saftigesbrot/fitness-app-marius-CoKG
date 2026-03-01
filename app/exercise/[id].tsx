@@ -1,17 +1,23 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, View, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { API_URL } from '@/services/api';
-import { useExercise } from '@/hooks/useExercises';
+import { useExercise, EXERCISE_KEYS } from '@/hooks/useExercises';
 import { usersService } from '@/services/users';
+import { useSession } from '@/context/AuthContext';
+import { exercisesService } from '@/services/exercises';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function ExerciseDetailScreen() {
     const { id } = useLocalSearchParams();
+    const router = useRouter();
+    const queryClient = useQueryClient();
+    const { isGuest, username: sessionUsername } = useSession();
     const [username, setUsername] = useState<string | null>(null);
     const { data: exerciseData, isLoading } = useExercise(Number(id));
     const [exercise, setExercise] = useState<any>(null);
@@ -52,6 +58,67 @@ export default function ExerciseDetailScreen() {
         } catch (error) {
             console.log('Error fetching user:', error);
             setUsername(`User #${userId}`);
+        }
+    };
+
+    const isOwner = exercise && (
+        (isGuest && exercise.creator === 'Guest') ||
+        (!isGuest && sessionUsername && username === sessionUsername)
+    );
+
+    const executeDelete = async () => {
+        if (isGuest) {
+            // Local delete for guest
+            queryClient.setQueryData(
+                EXERCISE_KEYS.list(JSON.stringify({ search: '', category: '' })),
+                (oldData: any) => {
+                    const data = Array.isArray(oldData) ? oldData : [];
+                    return data.filter(ex => (ex.exercise_id || ex.id) !== Number(id));
+                }
+            );
+            router.replace('/(tabs)/explore');
+            return;
+        }
+
+        // Normal user delete
+        try {
+            await exercisesService.deleteExercise(Number(id));
+
+            // Sofort aus der Hauptliste im Cache filtern, statt ein Refetch zu triggern
+            // Ein Refetch der aktiven (mittlerweile gelöschten) Detail-Seite würde den 404-Fehler auslösen!
+            queryClient.setQueryData(
+                EXERCISE_KEYS.list(JSON.stringify({ search: '', category: '' })),
+                (oldData: any) => {
+                    const data = Array.isArray(oldData) ? oldData : [];
+                    return data.filter((ex: any) => (ex.exercise_id || ex.id) !== Number(id));
+                }
+            );
+
+            router.replace('/(tabs)/explore');
+        } catch (error: any) {
+            if (Platform.OS === 'web') {
+                window.alert('Die Übung konnte nicht gelöscht werden.');
+            } else {
+                Alert.alert('Fehler', 'Die Übung konnte nicht gelöscht werden.');
+            }
+        }
+    };
+
+    const handleDelete = () => {
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm("Möchtest du diese Übung wirklich unwiderruflich löschen?");
+            if (confirmed) {
+                executeDelete();
+            }
+        } else {
+            Alert.alert(
+                "Übung Löschen",
+                "Möchtest du diese Übung wirklich unwiderruflich löschen?",
+                [
+                    { text: 'Abbrechen', style: 'cancel' },
+                    { text: 'Löschen', style: 'destructive', onPress: executeDelete }
+                ]
+            );
         }
     };
 
@@ -121,6 +188,26 @@ export default function ExerciseDetailScreen() {
                         )}
                     </View>
 
+                    {isOwner && (
+                        <View style={styles.actionRow}>
+                            <TouchableOpacity
+                                style={[styles.actionBtn, { backgroundColor: '#2D74DA' }]}
+                                onPress={() => router.push(`/exercise/edit/${id}`)}
+                            >
+                                <IconSymbol name="pencil" size={16} color="#fff" />
+                                <ThemedText style={styles.actionBtnText}>Bearbeiten</ThemedText>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.actionBtn, { backgroundColor: '#ff4444' }]}
+                                onPress={handleDelete}
+                            >
+                                <IconSymbol name="trash" size={16} color="#fff" />
+                                <ThemedText style={styles.actionBtnText}>Löschen</ThemedText>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     <ThemedText type="subtitle" style={styles.sectionHeader}>Beschreibung</ThemedText>
                     <ThemedText style={styles.description}>
                         {exercise.description || 'Keine Beschreibung verfügbar.'}
@@ -172,8 +259,26 @@ const styles = StyleSheet.create({
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 25,
+        marginBottom: 20,
         gap: 15
+    },
+    actionRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 25,
+    },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        borderRadius: 12,
+        gap: 6
+    },
+    actionBtnText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
     badge: {
         paddingHorizontal: 12,

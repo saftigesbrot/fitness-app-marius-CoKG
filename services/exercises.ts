@@ -21,4 +21,14 @@ export const exercisesService = {
         const response = await api.get('/category-list');
         return response.data;
     },
+    updateExercise: async (id: number, formData: FormData) => {
+        const response = await api.put(`/exercise-update?id=${id}`, formData, {
+            transformRequest: (data) => data,
+        });
+        return response.data;
+    },
+    deleteExercise: async (id: number) => {
+        const response = await api.delete(`/exercise-delete?id=${id}`);
+        return response.data;
+    },
 };
