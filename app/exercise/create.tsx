@@ -22,6 +22,7 @@ export default function CreateExerciseScreen() {
     const [categoryId, setCategoryId] = useState<number | null>(null);
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [isPublic, setIsPublic] = useState(false);
+    const [trackingType, setTrackingType] = useState('reps');
 
     const [categories, setCategories] = useState<any[]>([]);
     const [submitting, setSubmitting] = useState(false);
@@ -80,6 +81,7 @@ export default function CreateExerciseScreen() {
                     category: categoryId,
                     category_detail: categories.find(c => (c.category_id || c.id) === categoryId),
                     public: isPublic,
+                    tracking_type: trackingType,
                     image: imageUri,
                     creator: 'Guest',
                 };
@@ -101,6 +103,7 @@ export default function CreateExerciseScreen() {
             formData.append('description', description);
             formData.append('category', String(categoryId));
             formData.append('public', String(isPublic));
+            formData.append('tracking_type', trackingType);
 
             if (imageUri) {
                 const filename = imageUri.split('/').pop() || 'upload.jpg';
@@ -188,6 +191,22 @@ export default function CreateExerciseScreen() {
                     value={description}
                     onChangeText={setDescription}
                 />
+
+                {/* Tracking Type Switch */}
+                <View style={styles.switchContainer}>
+                    <View>
+                        <ThemedText style={styles.label}>Art der Aufzeichnung</ThemedText>
+                        <ThemedText style={styles.subtext}>
+                            {trackingType === 'time' ? 'Nach Zeit (Min / Sek)' : 'Nach Wiederholungen & Gewicht'}
+                        </ThemedText>
+                    </View>
+                    <Switch
+                        value={trackingType === 'time'}
+                        onValueChange={(val) => setTrackingType(val ? 'time' : 'reps')}
+                        trackColor={{ false: "#767577", true: "#2D74DA" }}
+                        thumbColor={trackingType === 'time' ? "#fff" : "#f4f3f4"}
+                    />
+                </View>
 
                 {/* Public Switch */}
                 <View style={styles.switchContainer}>

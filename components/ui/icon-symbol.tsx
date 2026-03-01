@@ -38,6 +38,8 @@ const MAPPING = {
   'sparkles': 'auto-awesome',
   'bell.slash': 'notifications-off',
   'lock.open.fill': 'lock-open',
+  'timer': 'timer',
+  'arrow.triangle.2.circlepath': 'repeat',
 } as IconMapping;
 
 /**

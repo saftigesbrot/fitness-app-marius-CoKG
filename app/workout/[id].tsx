@@ -27,6 +27,7 @@ const { width } = Dimensions.get('window');
 interface SetLog {
     weight: string;
     reps: string;
+    duration: number;
     completed: boolean;
 }
 
@@ -47,9 +48,9 @@ export default function TrainingSessionScreen() {
     // Map exerciseIndex -> Array of Sets
     const [setsLog, setSetsLog] = useState<{ [key: number]: SetLog[] }>({});
 
-    // Current Input State
     const [currentWeight, setCurrentWeight] = useState('');
     const [currentReps, setCurrentReps] = useState('');
+    const [currentSecs, setCurrentSecs] = useState('');
     const [isAddingSet, setIsAddingSet] = useState(true); // Default to true for the first set
 
     // Timer State
@@ -114,9 +115,9 @@ export default function TrainingSessionScreen() {
     const handleNextExercise = () => {
         if (currentIndex < exercises.length - 1) {
             setCurrentIndex(prev => prev + 1);
-            // Reset inputs for next exercise
             setCurrentWeight('');
             setCurrentReps('');
+            setCurrentSecs('');
             setSeconds(0); // Reset timer
             setIsAddingSet(true); // Auto-show input for first set of next exercise
         } else {
@@ -131,6 +132,7 @@ export default function TrainingSessionScreen() {
             setCurrentIndex(prev => prev - 1);
             setCurrentWeight('');
             setCurrentReps('');
+            setCurrentSecs('');
             setSeconds(0);
             setIsAddingSet(true);
         }
@@ -154,10 +156,10 @@ export default function TrainingSessionScreen() {
             sets.forEach(set => {
                 if (set.completed) {
                     setsData.push({
-                        exercise_id: exercise.exercise_id,
+                        exercise_id: exercise.exercise_id || exercise.id,
                         weight: set.weight,
                         reps: set.reps,
-                        duration: 0 // Duration tracking not implemented yet per set
+                        duration: set.duration
                     });
                 }
             });
@@ -209,11 +211,20 @@ export default function TrainingSessionScreen() {
     };
 
     const logSet = () => {
-        if (!currentWeight || !currentReps) return;
+        const isTimeBased = currentExercise?.tracking_type === 'time';
+
+        if (isTimeBased) {
+            if (!currentSecs) return;
+        } else {
+            if (!currentWeight || !currentReps) return;
+        }
+
+        const duration = parseInt(currentSecs || '0');
 
         const newSet: SetLog = {
-            weight: currentWeight,
-            reps: currentReps,
+            weight: isTimeBased ? '0' : currentWeight,
+            reps: isTimeBased ? '0' : currentReps,
+            duration: isTimeBased ? duration : 0,
             completed: true
         };
 
@@ -301,20 +312,35 @@ export default function TrainingSessionScreen() {
                 {/* Sets Header */}
                 <View style={[styles.row, { marginTop: 20, marginBottom: 10 }]}>
                     <ThemedText style={{ width: 40, color: '#aaa', fontSize: 12 }}>Satz</ThemedText>
-                    <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center' }}>Gewicht (kg)</ThemedText>
-                    <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center' }}>Wiederholungen</ThemedText>
+
+                    {currentExercise?.tracking_type === 'time' ? (
+                        <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center', marginLeft: 50 }}>Dauer (Sek)</ThemedText>
+                    ) : (
+                        <>
+                            <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center' }}>Gewicht (kg)</ThemedText>
+                            <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center' }}>Wiederholungen</ThemedText>
+                        </>
+                    )}
                 </View>
 
                 {/* Logged Sets List */}
                 {currentSets.map((set, idx) => (
                     <View key={idx} style={[styles.setRow, { opacity: 0.6 }]}>
                         <ThemedText style={styles.setLabel}>Satz {idx + 1}</ThemedText>
-                        <View style={[styles.inputDisplay, { backgroundColor: cardColor }]}>
-                            <ThemedText>{set.weight}</ThemedText>
-                        </View>
-                        <View style={[styles.inputDisplay, { backgroundColor: cardColor }]}>
-                            <ThemedText>{set.reps}</ThemedText>
-                        </View>
+                        {currentExercise?.tracking_type === 'time' ? (
+                            <View style={[styles.inputDisplay, { backgroundColor: cardColor, marginLeft: 50 }]}>
+                                <ThemedText>{set.duration}</ThemedText>
+                            </View>
+                        ) : (
+                            <>
+                                <View style={[styles.inputDisplay, { backgroundColor: cardColor }]}>
+                                    <ThemedText>{set.weight}</ThemedText>
+                                </View>
+                                <View style={[styles.inputDisplay, { backgroundColor: cardColor }]}>
+                                    <ThemedText>{set.reps}</ThemedText>
+                                </View>
+                            </>
+                        )}
                         <View style={[styles.setButton, { backgroundColor: '#333', opacity: 0.5 }]}>
                             <IconSymbol name="checkmark" size={24} color="#aaa" />
                         </View>
@@ -326,23 +352,35 @@ export default function TrainingSessionScreen() {
                     <View style={styles.setRow}>
                         <ThemedText style={styles.setLabel}>Satz {currentSets.length + 1}</ThemedText>
 
-                        <TextInput
-                            style={[styles.input, { backgroundColor: cardColor, color: textColor }]}
-                            keyboardType="numeric"
-                            placeholder="80"
-                            placeholderTextColor="#555"
-                            value={currentWeight}
-                            onChangeText={setCurrentWeight}
-                        />
-
-                        <TextInput
-                            style={[styles.input, { backgroundColor: cardColor, color: textColor }]}
-                            keyboardType="numeric"
-                            placeholder="10"
-                            placeholderTextColor="#555"
-                            value={currentReps}
-                            onChangeText={setCurrentReps}
-                        />
+                        {currentExercise?.tracking_type === 'time' ? (
+                            <TextInput
+                                style={[styles.input, { backgroundColor: cardColor, color: textColor, marginLeft: 50 }]}
+                                keyboardType="numeric"
+                                placeholder="45"
+                                placeholderTextColor="#555"
+                                value={currentSecs}
+                                onChangeText={setCurrentSecs}
+                            />
+                        ) : (
+                            <>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: cardColor, color: textColor }]}
+                                    keyboardType="numeric"
+                                    placeholder="80"
+                                    placeholderTextColor="#555"
+                                    value={currentWeight}
+                                    onChangeText={setCurrentWeight}
+                                />
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: cardColor, color: textColor }]}
+                                    keyboardType="numeric"
+                                    placeholder="10"
+                                    placeholderTextColor="#555"
+                                    value={currentReps}
+                                    onChangeText={setCurrentReps}
+                                />
+                            </>
+                        )}
 
                         <TouchableOpacity style={[styles.setButton, { backgroundColor: '#333' }]} onPress={logSet}>
                             <IconSymbol name="checkmark" size={24} color="#4CD964" />

@@ -25,6 +25,7 @@ export const DUMMY_EXERCISES = [
         category_detail: { id: 1, name: 'Brust' },
         public: true,
         creator: 'fitnessapp',
+        tracking_type: 'reps',
         image: null,
     },
     {
@@ -36,6 +37,7 @@ export const DUMMY_EXERCISES = [
         category_detail: { id: 2, name: 'Rücken' },
         public: true,
         creator: 'fitnessapp',
+        tracking_type: 'reps',
         image: null,
     },
     {
@@ -47,6 +49,7 @@ export const DUMMY_EXERCISES = [
         category_detail: { id: 3, name: 'Beine' },
         public: true,
         creator: 'fitnessapp',
+        tracking_type: 'reps',
         image: null,
     },
     {
@@ -58,6 +61,7 @@ export const DUMMY_EXERCISES = [
         category_detail: { id: 6, name: 'Core' },
         public: true,
         creator: 'fitnessapp',
+        tracking_type: 'time',
         image: null,
     }
 ];

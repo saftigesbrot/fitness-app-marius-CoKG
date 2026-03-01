@@ -101,6 +101,20 @@ function DataPrefetcher() {
 
     if (session && !isGuest) {
       console.log('Prefetching core data...');
+
+      // Reset default options for online mode (removing Infinity)
+      queryClient.setDefaultOptions({
+        queries: {
+          gcTime: 1000 * 60 * 60 * 24, // 24 hours
+          staleTime: 1000 * 60 * 5, // 5 minutes
+        }
+      });
+
+      // Explicitly clear guest categories/lists to force a fresh fetch from the actual API
+      queryClient.removeQueries({ queryKey: TRAINING_KEYS.categories });
+      queryClient.removeQueries({ queryKey: TRAINING_KEYS.lists() });
+      queryClient.removeQueries({ queryKey: EXERCISE_KEYS.categories });
+
       // Prefetch user profile/level/scoring
       queryClient.prefetchQuery({
         queryKey: USER_KEYS.level,

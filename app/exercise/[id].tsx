@@ -177,6 +177,14 @@ export default function ExerciseDetailScreen() {
                             </ThemedText>
                         </View>
 
+                        {/* Tracking Type Badge */}
+                        <View style={[styles.badge, { backgroundColor: cardColor }]}>
+                            <IconSymbol name={exercise.tracking_type === 'time' ? "timer" : "arrow.triangle.2.circlepath"} size={12} color={textColor} style={{ marginRight: 4 }} />
+                            <ThemedText style={styles.badgeText}>
+                                {exercise.tracking_type === 'time' ? 'Auf Zeit' : 'Auf Wiederholungen'}
+                            </ThemedText>
+                        </View>
+
                         {/* Creator Badge (if public and not me, or just available) */}
                         {exercise.username && (
                             <View style={[styles.badge, { backgroundColor: cardColor }]}>
@@ -258,6 +266,7 @@ const styles = StyleSheet.create({
     },
     metaRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         alignItems: 'center',
         marginBottom: 20,
         gap: 15
@@ -281,6 +290,8 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     badge: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
