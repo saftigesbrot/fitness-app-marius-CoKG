@@ -2,7 +2,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -12,7 +12,7 @@ import { exercisesService } from '@/services/exercises';
 import { useExerciseCategories, useExercise, EXERCISE_KEYS } from '@/hooks/useExercises';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/context/AuthContext';
-import { API_URL } from '@/services/api';
+import { API_URL, getImageUrl } from '@/services/api';
 
 export default function EditExerciseScreen() {
     const { id } = useLocalSearchParams();
@@ -53,7 +53,7 @@ export default function EditExerciseScreen() {
                 setTrackingType(data.tracking_type || 'reps');
                 // Handle image URI format
                 if (data.image) {
-                    setImageUri(data.image.startsWith('http') ? data.image : `${API_URL}${data.image}`);
+                    setImageUri(getImageUrl(data.image) as string);
                 }
             }
         }
@@ -69,7 +69,7 @@ export default function EditExerciseScreen() {
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [4, 3],
             quality: 0.8,
@@ -130,18 +130,31 @@ export default function EditExerciseScreen() {
             formData.append('public', String(isPublic));
             formData.append('tracking_type', trackingType);
 
-            if (imageUri) {
-                const filename = imageUri.split('/').pop() || 'upload.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                let type = match ? `image/${match[1]}` : 'image/jpeg';
+            if (imageUri && !imageUri.startsWith('http')) {
+                if (Platform.OS === 'web') {
+                    try {
+                        const response = await fetch(imageUri);
+                        const blob = await response.blob();
+                        formData.append('image', blob, 'upload.jpg');
+                    } catch (e) {
+                        console.error("Failed to append web image blob", e);
+                    }
+                } else {
+                    const filename = imageUri.split('/').pop() || 'upload.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    let type = match ? `image/${match[1]}` : 'image/jpeg';
 
-                // Fix common mimetype issues
-                if (type === 'image/jpg') {
-                    type = 'image/jpeg';
+                    if (type === 'image/jpg') {
+                        type = 'image/jpeg';
+                    }
+
+                    // @ts-ignore
+                    formData.append('image', {
+                        uri: Platform.OS === 'ios' ? imageUri.replace('file://', '') : imageUri,
+                        name: filename,
+                        type,
+                    });
                 }
-
-                // @ts-ignore
-                formData.append('image', { uri: imageUri, name: filename, type });
             }
 
             await exercisesService.updateExercise(Number(id), formData);

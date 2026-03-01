@@ -17,7 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
-import { API_URL } from '@/services/api';
+import { API_URL, getImageUrl } from '@/services/api';
 import { useTrainingPlan } from '@/hooks/useTrainingPlans';
 import { useExercises } from '@/hooks/useExercises';
 import { useSession } from '@/context/AuthContext';
@@ -289,7 +289,7 @@ export default function TrainingSessionScreen() {
                 <View style={styles.imageContainer}>
                     {currentExercise?.image && (
                         <Image
-                            source={{ uri: currentExercise.image.startsWith('http') ? currentExercise.image : `${API_URL}${currentExercise.image}` }}
+                            source={{ uri: getImageUrl(currentExercise.image) as string }}
                             style={styles.exerciseImage}
                             resizeMode="cover"
                         />

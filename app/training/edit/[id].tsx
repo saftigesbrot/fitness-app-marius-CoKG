@@ -18,8 +18,8 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
-import { API_URL } from '@/services/api';
-import { useExercises } from '@/hooks/useExercises';
+import { API_URL, getImageUrl } from '@/services/api';
+import { useExercises, useExerciseCategories, EXERCISE_KEYS } from '@/hooks/useExercises';
 import { useTrainingCategories, useTrainingPlan, TRAINING_KEYS } from '@/hooks/useTrainingPlans';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/context/AuthContext';
@@ -302,10 +302,14 @@ export default function EditTrainingPlanScreen() {
                             style={[styles.resultItem, { borderBottomColor: cardColor }]}
                             onPress={() => toggleExercise(ex)}
                         >
-                            <Image
-                                source={{ uri: ex.image?.startsWith('http') ? ex.image : `${API_URL}${ex.image}` }}
-                                style={styles.thumb}
-                            />
+                            {ex.image ? (
+                                <Image
+                                    source={{ uri: getImageUrl(ex.image) as string }}
+                                    style={styles.thumb}
+                                />
+                            ) : (
+                                <View style={[styles.thumb, { backgroundColor: '#333' }]} />
+                            )}
                             <View style={{ flex: 1, marginLeft: 10 }}>
                                 <ThemedText type="defaultSemiBold">{ex.name}</ThemedText>
                                 <ThemedText style={{ fontSize: 12, color: '#aaa' }}>{ex.category_detail?.name}</ThemedText>

@@ -5,6 +5,14 @@ import { Platform } from 'react-native';
 // Use localhost for iOS simulator, 10.0.2.2 for Android emulator
 export const API_URL = 'http://127.0.0.1:8000';
 
+export const getImageUrl = (imagePath: string | null | undefined) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http') || imagePath.startsWith('file://') || imagePath.startsWith('content://') || imagePath.startsWith('data:') || imagePath.startsWith('blob:')) {
+        return imagePath;
+    }
+    return `${API_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
+
 const api = axios.create({
     baseURL: API_URL,
     headers: {

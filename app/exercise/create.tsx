@@ -2,7 +2,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -43,7 +43,7 @@ export default function CreateExerciseScreen() {
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [4, 3],
             quality: 0.8,
@@ -106,17 +106,34 @@ export default function CreateExerciseScreen() {
             formData.append('tracking_type', trackingType);
 
             if (imageUri) {
-                const filename = imageUri.split('/').pop() || 'upload.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                let type = match ? `image/${match[1]}` : 'image/jpeg';
+                if (Platform.OS === 'web') {
+                    // On web, we need to convert the fetched blob to a file, or if it's base64, send directly
+                    try {
+                        const response = await fetch(imageUri);
+                        const blob = await response.blob();
+                        formData.append('image', blob, 'upload.jpg');
+                    } catch (e) {
+                        console.error("Failed to append web image blob", e);
+                    }
+                } else {
+                    const filename = imageUri.split('/').pop() || 'upload.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    let type = match ? `image/${match[1]}` : 'image/jpeg';
 
-                // Fix common mimetype issues
-                if (type === 'image/jpg') {
-                    type = 'image/jpeg';
+                    if (type === 'image/jpg') {
+                        type = 'image/jpeg';
+                    }
+
+                    const uriParts = imageUri.split('.');
+                    const fileExtension = uriParts[uriParts.length - 1];
+
+                    // @ts-ignore
+                    formData.append('image', {
+                        uri: Platform.OS === 'ios' ? imageUri.replace('file://', '') : imageUri,
+                        name: filename,
+                        type,
+                    });
                 }
-
-                // @ts-ignore
-                formData.append('image', { uri: imageUri, name: filename, type });
             }
 
             await exercisesService.createExercise(formData);

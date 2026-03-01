@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { API_URL } from '@/services/api';
+import { API_URL, getImageUrl } from '@/services/api';
 import { useExercise, EXERCISE_KEYS } from '@/hooks/useExercises';
 import { usersService } from '@/services/users';
 import { useSession } from '@/context/AuthContext';
@@ -147,7 +147,7 @@ export default function ExerciseDetailScreen() {
                 <View style={styles.imageContainer}>
                     {exercise.image ? (
                         <Image
-                            source={{ uri: exercise.image.startsWith('http') ? exercise.image : `${API_URL}${exercise.image}` }}
+                            source={{ uri: getImageUrl(exercise.image) as string }}
                             style={styles.image}
                             resizeMode="cover"
                         />

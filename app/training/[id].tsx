@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
-import { API_URL } from '@/services/api';
+import { API_URL, getImageUrl } from '@/services/api';
 import { useTrainingPlan } from '@/hooks/useTrainingPlans';
 import { useExercises } from '@/hooks/useExercises';
 import { useSession } from '@/context/AuthContext';
@@ -135,10 +135,16 @@ export default function TrainingPlanDetailScreen() {
                             style={[styles.exerciseItem, { backgroundColor: cardColor }]}
                             onPress={() => router.push(`/exercise/${ex.exercise_id || ex.id}`)}
                         >
-                            <Image
-                                source={{ uri: ex.image?.startsWith('http') ? ex.image : `${API_URL}${ex.image}` }}
-                                style={styles.exerciseImage}
-                            />
+                            {ex.image ? (
+                                <Image
+                                    source={{ uri: getImageUrl(ex.image) as string }}
+                                    style={styles.exerciseImage}
+                                />
+                            ) : (
+                                <View style={[styles.exerciseImage, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
+                                    <IconSymbol name="photo" size={30} color="#888" />
+                                </View>
+                            )}
                             <View style={styles.exerciseInfo}>
                                 <ThemedText type="defaultSemiBold">{ex.name}</ThemedText>
                                 <ThemedText style={styles.exerciseCategory}>{ex.category_detail?.name || ex.category_name}</ThemedText>

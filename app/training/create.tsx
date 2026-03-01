@@ -18,7 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
-import { API_URL } from '@/services/api';
+import { API_URL, getImageUrl } from '@/services/api';
 import { useExercises } from '@/hooks/useExercises';
 import { useTrainingCategories, TRAINING_KEYS } from '@/hooks/useTrainingPlans';
 import { useQueryClient } from '@tanstack/react-query';
@@ -282,7 +282,7 @@ export default function CreateTrainingPlanScreen() {
                             onPress={() => toggleExercise(ex)}
                         >
                             <Image
-                                source={{ uri: ex.image?.startsWith('http') ? ex.image : `${API_URL}${ex.image}` }}
+                                source={{ uri: getImageUrl(ex.image) as string }}
                                 style={styles.thumb}
                             />
                             <View style={{ flex: 1, marginLeft: 10 }}>
