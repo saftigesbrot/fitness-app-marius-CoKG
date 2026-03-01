@@ -54,14 +54,20 @@ export default function TrainingSessionScreen() {
     const [isAddingSet, setIsAddingSet] = useState(true); // Default to true for the first set
 
     // Timer State
-    const [seconds, setSeconds] = useState(0);
+    const [breakSeconds, setBreakSeconds] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | number | null>(null);
 
     useEffect(() => {
-        if (isActive) {
+        if (isActive && breakSeconds > 0) {
             intervalRef.current = setInterval(() => {
-                setSeconds(prev => prev + 1);
+                setBreakSeconds(prev => {
+                    if (prev <= 1) {
+                        setIsActive(false);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
             }, 1000);
         } else if (!isActive && intervalRef.current) {
             clearInterval(intervalRef.current);
@@ -69,7 +75,7 @@ export default function TrainingSessionScreen() {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [isActive]);
+    }, [isActive, breakSeconds]);
 
     const { data: planData, isLoading: isLoadingPlan } = useTrainingPlan(Number(id));
     const { data: allExercisesData } = useExercises('', '');
@@ -80,6 +86,7 @@ export default function TrainingSessionScreen() {
             setLoading(false);
 
             if (planData.order && Array.isArray(planData.order)) {
+                let hasMapped = false;
                 if (allExercisesData && Array.isArray(allExercisesData)) {
                     // Map from cache
                     const mappedExercises = planData.order.map((exId: number) => {
@@ -88,10 +95,11 @@ export default function TrainingSessionScreen() {
 
                     if (mappedExercises.length > 0) {
                         setExercises(mappedExercises);
+                        hasMapped = true;
                     }
                 }
 
-                if (planData.exercises && Array.isArray(planData.exercises) && planData.exercises.length > 0 && exercises.length === 0) {
+                if (!hasMapped && planData.exercises && Array.isArray(planData.exercises) && planData.exercises.length > 0 && exercises.length === 0) {
                     const normalized = planData.exercises.map((e: any) => e.exercise ? e.exercise : e);
                     setExercises(normalized);
                 }
@@ -99,8 +107,6 @@ export default function TrainingSessionScreen() {
                 const normalized = planData.exercises.map((e: any) => e.exercise ? e.exercise : e);
                 setExercises(normalized);
             }
-
-            setIsActive(true); // Start timer automatically
         } else if (!isLoadingPlan) {
             setLoading(false);
         }
@@ -118,7 +124,6 @@ export default function TrainingSessionScreen() {
             setCurrentWeight('');
             setCurrentReps('');
             setCurrentSecs('');
-            setSeconds(0); // Reset timer
             setIsAddingSet(true); // Auto-show input for first set of next exercise
         } else {
             // Finish Training - Log and call directly to debug/fix "nothing happens"
@@ -133,7 +138,6 @@ export default function TrainingSessionScreen() {
             setCurrentWeight('');
             setCurrentReps('');
             setCurrentSecs('');
-            setSeconds(0);
             setIsAddingSet(true);
         }
     };
@@ -236,9 +240,9 @@ export default function TrainingSessionScreen() {
             };
         });
 
-        // Reset inputs and timer, hide input row
-        // setCurrentReps(''); 
-        setSeconds(0);
+        // Reset inputs and start break timer
+        setBreakSeconds(plan?.break_time || 60);
+        setIsActive(true);
         setIsAddingSet(false);
     };
 
@@ -303,7 +307,15 @@ export default function TrainingSessionScreen() {
 
                 {/* Info */}
                 <View style={styles.infoSection}>
-                    <ThemedText type="title" style={{ marginBottom: 5 }}>{currentExercise?.name}</ThemedText>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                        <ThemedText type="title" style={{ flex: 1 }}>{currentExercise?.name}</ThemedText>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#333', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 5 }}>
+                            <IconSymbol name={currentExercise?.tracking_type === 'time' ? 'timer' : 'repeat'} size={14} color="#fff" />
+                            <ThemedText style={{ fontSize: 12, color: '#fff', fontWeight: 'bold' }}>
+                                {currentExercise?.tracking_type === 'time' ? 'Auf Zeit' : 'Auf Wiederholungen'}
+                            </ThemedText>
+                        </View>
+                    </View>
                     <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
                         {currentExercise?.description || 'Keine Beschreibung verfügbar.'}
                     </ThemedText>
@@ -405,11 +417,11 @@ export default function TrainingSessionScreen() {
             {/* Footer / Controls */}
             <View style={[styles.footer, { backgroundColor: cardColor }]}>
                 <View style={styles.timerContainer}>
-                    <ThemedText style={styles.timerText}>{formatTime(seconds)} Pause</ThemedText>
+                    <ThemedText style={styles.timerText}>{formatTime(breakSeconds)} Pause</ThemedText>
                     <TouchableOpacity onPress={() => setIsActive(!isActive)} style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <IconSymbol name={isActive ? "pause.fill" : "play.fill"} size={16} color={primaryColor} />
                         <ThemedText style={{ color: primaryColor, marginLeft: 5, fontWeight: 'bold' }}>
-                            {isActive ? 'Stoppen' : 'Starten'}
+                            {isActive ? 'Pausieren' : 'Weiter'}
                         </ThemedText>
                     </TouchableOpacity>
                 </View>
