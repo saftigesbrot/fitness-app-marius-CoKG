@@ -1,11 +1,13 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useSession } from '@/context/AuthContext';
-import { useEffect, useState } from 'react';
-import { Alert, Image, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Alert, Image, Platform, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { CircularProgress } from '@/components/ui/CircularProgress';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Colors } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -19,11 +21,48 @@ export default function ProfileScreen() {
     const primaryColor = useThemeColor({}, 'primary');
     const textColor = useThemeColor({}, 'text');
 
+<<<<<<< HEAD
     const { data: levelData } = useUserLevel();
     const { data: scoringData } = useScorings('current');
     const { data: plans = [] } = useTrainingPlans();
 
     const currentScore = scoringData?.value || 0;
+=======
+    const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
+    const [currentScore, setCurrentScore] = useState<number>(0);
+    const [plans, setPlans] = useState<any[]>([]);
+    const [refreshing, setRefreshing] = useState(false);
+
+    // Load data when screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            loadProfileData();
+        }, [])
+    );
+
+    // Pull to refresh handler
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadProfileData();
+        setRefreshing(false);
+    }, []);
+
+    const loadProfileData = async () => {
+        try {
+            const [level, score, fetchedPlans] = await Promise.all([
+                scoringsService.getLevel(),
+                scoringsService.getScorings('current'),
+                trainingsService.getTrainingPlans()
+            ]);
+
+            if (level) setLevelData(level);
+            if (score && score.value !== undefined) setCurrentScore(score.value);
+            if (Array.isArray(fetchedPlans)) setPlans(fetchedPlans);
+        } catch (error) {
+            console.error("Failed to load profile data:", error);
+        }
+    };
+>>>>>>> UI-Changes
 
     const handleLogout = () => {
         if (Platform.OS === 'web') {
@@ -46,7 +85,17 @@ export default function ProfileScreen() {
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.container}>
+            <ScrollView 
+                contentContainerStyle={styles.container}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={primaryColor}
+                        colors={[primaryColor]}
+                    />
+                }
+            >
                 {/* Header */}
                 <View style={styles.header}>
                     <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.avatar} />
@@ -60,14 +109,47 @@ export default function ProfileScreen() {
 
                 {/* Level Card */}
                 <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
-                    <View style={styles.levelRow}>
-                        <ThemedText type="subtitle">Level {levelData?.level || 1}</ThemedText>
-                        <ThemedText style={styles.xpText}>{levelData?.xp_current || 0} / {levelData?.xp_needed || 0} XP</ThemedText>
+                    <View style={styles.levelContainer}>
+                        {/* Circular Progress */}
+                        <CircularProgress 
+                            size={100} 
+                            strokeWidth={8} 
+                            progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)}
+                            dynamicColor={true}
+                            progressType="level"
+                        >
+                            <View style={styles.circularProgressContent}>
+                                <ThemedText type="subtitle" style={styles.levelNumber}>
+                                    {levelData?.level || 1}
+                                </ThemedText>
+                                <ThemedText style={styles.levelLabel}>Level</ThemedText>
+                            </View>
+                        </CircularProgress>
+
+                        {/* Level Info */}
+                        <View style={styles.levelInfo}>
+                            <View style={styles.levelRow}>
+                                <ThemedText type="subtitle">Level {levelData?.level || 1}</ThemedText>
+                                <ThemedText style={styles.xpText}>{levelData?.xp_current || 0} / {levelData?.xp_needed || 0} XP</ThemedText>
+                            </View>
+                            <View style={{ marginVertical: 10 }}>
+                                <ProgressBar 
+                                    progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)} 
+                                    height={10} 
+                                    dynamicColor={true}
+                                    progressType="level"
+                                />
+                            </View>
+                            <ThemedText style={styles.scoreText}>
+                                Trainingsscore: <ThemedText 
+                                    type="defaultSemiBold" 
+                                    style={currentScore >= 2000 ? { color: '#FFD700' } : undefined}
+                                >
+                                    {currentScore} / 2000 Punkte
+                                </ThemedText>
+                            </ThemedText>
+                        </View>
                     </View>
-                    <View style={{ marginVertical: 10 }}>
-                        <ProgressBar progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)} color="#4CD964" height={8} />
-                    </View>
-                    <ThemedText style={styles.scoreText}>Aktueller Trainingsscore: <ThemedText type="defaultSemiBold">{currentScore}</ThemedText></ThemedText>
                 </ThemedView>
 
                 {/* Personal Records (Static for now) */}
@@ -154,6 +236,27 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 16,
         marginBottom: 20,
+    },
+    levelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 20,
+    },
+    circularProgressContent: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    levelNumber: {
+        fontSize: 32,
+        fontWeight: 'bold',
+    },
+    levelLabel: {
+        fontSize: 12,
+        color: '#aaa',
+        marginTop: -5,
+    },
+    levelInfo: {
+        flex: 1,
     },
     levelRow: {
         flexDirection: 'row',

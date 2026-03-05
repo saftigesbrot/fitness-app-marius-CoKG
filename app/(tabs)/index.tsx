@@ -1,13 +1,18 @@
 
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CircularProgress } from '@/components/ui/CircularProgress';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LevelUpModal } from '@/components/ui/LevelUpModal';
+import { PointsMilestoneModal } from '@/components/ui/PointsMilestoneModal';
 import { Colors } from '@/constants/theme';
 import { useSession } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -25,6 +30,7 @@ export default function HomeScreen() {
   const textColor = useThemeColor({}, 'text');
 
   const { username } = useSession();
+<<<<<<< HEAD
   const { data: levelData, isLoading: isLoadingLevel } = useUserLevel();
   const { data: scoringData, isLoading: isLoadingScoring } = useScorings('current');
   const { data: recommendations, isLoading: isLoadingRecs } = useTrainingRecommendations();
@@ -50,6 +56,164 @@ export default function HomeScreen() {
 
   const topScore = leaderboardData?.topScore || 0;
   const loading = isLoadingLevel || isLoadingScoring || isLoadingRecs || isLoadingLeaderboard || isLoadingPlans;
+=======
+  const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
+  const [scoringData, setScoringData] = useState<{ value: number } | null>(null);
+  const [recommendations, setRecommendations] = useState<{ plans: any[]; exercises: any[] } | null>(null);
+  const [leaderboardData, setLeaderboardData] = useState<{ myRank: number; total: number; above: any; below: any } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const [newLevel, setNewLevel] = useState(0);
+  const [showPointsMilestoneModal, setShowPointsMilestoneModal] = useState(false);
+  const [milestonePoints, setMilestonePoints] = useState(0);
+  const previousLevelRef = useRef<number | null>(null);
+
+  // Load data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, []);
+
+  const getBestScorePerUser = (rows: any[]) => {
+    const bestByUser = new Map<string, any>();
+
+    rows.forEach((row: any) => {
+      const userId = row.user__id || row.user || row.id;
+      const userName = row.username || row.user__username;
+      const userKey = userId !== undefined ? `id:${userId}` : `name:${userName || 'unknown'}`;
+      const currentBest = bestByUser.get(userKey);
+
+      if (!currentBest || (row.value || 0) > (currentBest.value || 0)) {
+        bestByUser.set(userKey, row);
+      }
+    });
+
+    return Array.from(bestByUser.values()).sort((a, b) => (b.value || 0) - (a.value || 0));
+  };
+
+  const loadData = async () => {
+    try {
+      if (!refreshing) {
+        setLoading(true);
+      }
+      
+      console.log('Loading level data...');
+      const level = await scoringsService.getLevel();
+      console.log('Level data received:', level);
+      
+      // Check for level up by comparing with stored level
+      if (level && level.level) {
+        try {
+          const storedLevel = await SecureStore.getItemAsync('lastKnownLevel');
+          console.log('Stored level:', storedLevel, 'Current level:', level.level);
+          
+          if (storedLevel) {
+            const lastLevel = parseInt(storedLevel, 10);
+            if (level.level > lastLevel) {
+              console.log('🎉 LEVEL UP DETECTED!', lastLevel, '->', level.level);
+              setNewLevel(level.level);
+              setShowLevelUpModal(true);
+            }
+          }
+          
+          // Store current level
+          await SecureStore.setItemAsync('lastKnownLevel', level.level.toString());
+        } catch (error) {
+          console.error('Error checking level up:', error);
+        }
+      }
+      
+      setLevelData(level);
+
+      console.log('Loading scoring data...');
+      const score = await scoringsService.getScorings('current');
+      console.log('Scoring data received:', score);
+      if (score) {
+        const currentPoints = score.value || 0;
+        setScoringData({
+          value: currentPoints
+        });
+        
+        // Check for points milestones
+        try {
+          const storedMilestones = await SecureStore.getItemAsync('pointsMilestones');
+          const milestones = storedMilestones ? JSON.parse(storedMilestones) : {};
+          
+          // Check if we reached 2000 points for the first time
+          if (currentPoints >= 2000 && !milestones.reached2000) {
+            console.log('🏆 Reached 2000 points milestone!');
+            milestones.reached2000 = true;
+            setMilestonePoints(2000);
+            setShowPointsMilestoneModal(true);
+            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
+          }
+          // Check if we reached 1500 points for the first time
+          else if (currentPoints >= 1500 && !milestones.reached1500) {
+            console.log('🌟 Reached 1500 points milestone!');
+            milestones.reached1500 = true;
+            setMilestonePoints(1500);
+            setShowPointsMilestoneModal(true);
+            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
+          }
+          // Check if we dropped below 500 points
+          else if (currentPoints < 500 && !milestones.below500) {
+            console.log('😔 Dropped below 500 points');
+            milestones.below500 = true;
+            setMilestonePoints(500);
+            setShowPointsMilestoneModal(true);
+            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
+          }
+          // Reset the below500 flag if we're back above 500
+          else if (currentPoints >= 500 && milestones.below500) {
+            milestones.below500 = false;
+            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
+          }
+        } catch (error) {
+          console.error('Error checking points milestones:', error);
+        }
+      }
+
+      // Load recommendations (new public plans and exercises)
+      try {
+        const recs = await trainingsService.getRecommendations();
+        if (recs) {
+          setRecommendations(recs);
+        }
+      } catch (error) {
+        console.log('Error loading recommendations:', error);
+      }
+
+      // Load leaderboard data (uses top scores)
+      const leaderboard = await scoringsService.getScorings('leaderboard');
+      if (Array.isArray(leaderboard)) {
+        const normalizedLeaderboard = getBestScorePerUser(leaderboard);
+        // Find my rank
+        const myIndex = normalizedLeaderboard.findIndex(item => (item.user__username || item.username) === username);
+        if (myIndex !== -1) {
+          setLeaderboardData({
+            myRank: myIndex + 1,
+            total: normalizedLeaderboard.length,
+            above: myIndex > 0 ? normalizedLeaderboard[myIndex - 1] : null,
+            below: myIndex < normalizedLeaderboard.length - 1 ? normalizedLeaderboard[myIndex + 1] : null
+          });
+        }
+      }
+    } catch (error) {
+      console.log('Error loading home data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+>>>>>>> UI-Changes
 
   const handleStartTraining = async () => {
     // ... (logic remains mostly same but uses 'plans' from hook)
@@ -78,7 +242,18 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor }]} edges={['top']}>
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor }]} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.container, { backgroundColor }]} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={primaryColor}
+            colors={[primaryColor]}
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.userInfo}>
@@ -88,11 +263,51 @@ export default function HomeScreen() {
             />
             <View>
               <ThemedText type="title">Hallo, {username || 'Gast'}!</ThemedText>
-              <ThemedText style={styles.subtitle}>Level {levelData?.level || 1} • {levelData?.xp_current || 0}/{levelData?.xp_needed || 0} XP</ThemedText>
+              <ThemedText style={styles.subtitle}>
+                Level {levelData?.level || 1} ({levelData?.xp || 0} XP) • {scoringData?.value || 0} Punkte
+              </ThemedText>
             </View>
           </View>
           <TouchableOpacity onPress={() => router.push('/notifications')}>
             <IconSymbol name="bell.fill" size={24} color={iconColor} />
+          </TouchableOpacity>
+          {/* TEST: Level Up Modal Button - Remove in production */}
+          <TouchableOpacity 
+            onPress={() => {
+              setNewLevel(levelData?.level || 8);
+              setShowLevelUpModal(true);
+            }}
+            style={{ marginLeft: 10 }}
+          >
+            <ThemedText style={{ fontSize: 20 }}>🎉</ThemedText>
+          </TouchableOpacity>
+          {/* TEST: Points Milestone Buttons - Remove in production */}
+          <TouchableOpacity 
+            onPress={() => {
+              setMilestonePoints(500);
+              setShowPointsMilestoneModal(true);
+            }}
+            style={{ marginLeft: 5 }}
+          >
+            <ThemedText style={{ fontSize: 20 }}>😔</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => {
+              setMilestonePoints(1500);
+              setShowPointsMilestoneModal(true);
+            }}
+            style={{ marginLeft: 5 }}
+          >
+            <ThemedText style={{ fontSize: 20 }}>⭐</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => {
+              setMilestonePoints(2000);
+              setShowPointsMilestoneModal(true);
+            }}
+            style={{ marginLeft: 5 }}
+          >
+            <ThemedText style={{ fontSize: 20 }}>👑</ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -109,7 +324,8 @@ export default function HomeScreen() {
                 size={80}
                 strokeWidth={8}
                 progress={(levelData?.xp_current || 0) / (levelData?.xp_needed || 1)}
-                color="#4CD964"
+                dynamicColor={true}
+                progressType="level"
                 trackColor="#333"
               >
                 <View style={{ alignItems: 'center' }}>
@@ -124,13 +340,22 @@ export default function HomeScreen() {
               <CircularProgress
                 size={80}
                 strokeWidth={8}
-                progress={currentScore / 2000}
-                color={primaryColor}
+                progress={(scoringData?.value || 0) / 2000}
+                dynamicColor={true}
+                progressType="points"
                 trackColor="#333"
               >
                 <View style={{ alignItems: 'center' }}>
-                  <ThemedText type="subtitle" style={{ fontSize: 18, lineHeight: 22 }}>{currentScore}</ThemedText>
-                  <ThemedText style={{ fontSize: 10, color: '#aaa' }}>Score</ThemedText>
+                  <ThemedText 
+                    type="subtitle" 
+                    style={[
+                      { fontSize: 18, lineHeight: 22 },
+                      (scoringData?.value || 0) >= 2000 && { color: '#FFD700' }
+                    ]}
+                  >
+                    {scoringData?.value || 0}
+                  </ThemedText>
+                  <ThemedText style={{ fontSize: 10, color: '#aaa' }}>Punkte</ThemedText>
                 </View>
               </CircularProgress>
             </View>
@@ -180,30 +405,45 @@ export default function HomeScreen() {
             <View style={styles.leaderboardRow}>
               <Image source={{ uri: `https://i.pravatar.cc/150?u=${leaderboardData.above.user__username}` }} style={styles.smallAvatar} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <ThemedText>{leaderboardData.above.user__username} ({leaderboardData.above.value} Pkt)</ThemedText>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${Math.min((leaderboardData.above.value / 2000) * 100, 100)}%` }]} />
-                </View>
+                <ThemedText>
+                  {leaderboardData.above.user__username} ({leaderboardData.above.value} Pkt)
+                </ThemedText>
+                <ProgressBar 
+                  progress={Math.min(leaderboardData.above.value / 2000, 1)} 
+                  height={6} 
+                  dynamicColor={true}
+                  progressType="points"
+                />
               </View>
             </View>
           )}
           <View style={[styles.leaderboardRow, leaderboardData?.above && { marginTop: 15 }]}>
             <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.smallAvatar} />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <ThemedText>{username || 'Du'} ({topScore} Pkt)</ThemedText>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${Math.min((topScore / 2000) * 100, 100)}%`, backgroundColor: '#4CD964' }]} />
-              </View>
+              <ThemedText>
+                {username || 'Du'} ({scoringData?.value || 0} Pkt)
+              </ThemedText>
+              <ProgressBar 
+                progress={(scoringData?.value || 0) / 2000} 
+                height={6} 
+                dynamicColor={true}
+                progressType="points"
+              />
             </View>
           </View>
           {leaderboardData?.below && (
             <View style={[styles.leaderboardRow, { marginTop: 15 }]}>
               <Image source={{ uri: `https://i.pravatar.cc/150?u=${leaderboardData.below.user__username}` }} style={styles.smallAvatar} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <ThemedText>{leaderboardData.below.user__username} ({leaderboardData.below.value} Pkt)</ThemedText>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${Math.min((leaderboardData.below.value / 2000) * 100, 100)}%` }]} />
-                </View>
+                <ThemedText>
+                  {leaderboardData.below.user__username} ({leaderboardData.below.value} Pkt)
+                </ThemedText>
+                <ProgressBar 
+                  progress={Math.min(leaderboardData.below.value / 2000, 1)} 
+                  height={6} 
+                  dynamicColor={true}
+                  progressType="points"
+                />
               </View>
             </View>
           )}
@@ -271,6 +511,20 @@ export default function HomeScreen() {
         )}
 
       </ScrollView >
+      
+      {/* Level Up Modal */}
+      <LevelUpModal
+        visible={showLevelUpModal}
+        level={newLevel}
+        onClose={() => setShowLevelUpModal(false)}
+      />
+      
+      {/* Points Milestone Modal */}
+      <PointsMilestoneModal
+        visible={showPointsMilestoneModal}
+        points={milestonePoints}
+        onClose={() => setShowPointsMilestoneModal(false)}
+      />
     </SafeAreaView >
   );
 }
@@ -388,18 +642,7 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
   },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: '#333',
-    borderRadius: 3,
-    marginTop: 5,
-    width: '100%',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#2D74DA',
-    borderRadius: 3,
-  },
+
   row: {
     flexDirection: 'row',
     alignItems: 'center',

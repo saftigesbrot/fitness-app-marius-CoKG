@@ -2,6 +2,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Image,
     ScrollView,
@@ -17,10 +18,8 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
-import { API_URL, getImageUrl } from '@/services/api';
-import { useTrainingPlan } from '@/hooks/useTrainingPlans';
-import { useExercises } from '@/hooks/useExercises';
-import { useSession } from '@/context/AuthContext';
+import { scoringsService } from '@/services/scorings';
+import { API_URL } from '@/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +42,9 @@ export default function TrainingSessionScreen() {
     const [exercises, setExercises] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [currentLevel, setCurrentLevel] = useState<number>(1);
 
     // State for Sets
     // Map exerciseIndex -> Array of Sets
@@ -71,11 +73,17 @@ export default function TrainingSessionScreen() {
         };
     }, [isActive]);
 
-    const { data: planData, isLoading: isLoadingPlan } = useTrainingPlan(Number(id));
-    const { data: allExercisesData } = useExercises('', '');
+    const loadSession = async () => {
+        try {
+            setLoading(true);
 
-    useEffect(() => {
-        if (planData) {
+            // Load current level before workout
+            const levelData = await scoringsService.getLevel();
+            if (levelData) {
+                setCurrentLevel(levelData.level);
+            }
+
+            const planData = await trainingsService.getTrainingPlans(Number(id));
             setPlan(planData);
             setLoading(false);
 
@@ -113,6 +121,9 @@ export default function TrainingSessionScreen() {
     };
 
     const handleNextExercise = () => {
+        if (isSaving) return;
+
+        setSaveError(null);
         if (currentIndex < exercises.length - 1) {
             setCurrentIndex(prev => prev + 1);
             setCurrentWeight('');
@@ -141,332 +152,381 @@ export default function TrainingSessionScreen() {
     const { isGuest } = useSession();
 
     const finishTraining = async () => {
-        // Construct Execution Data
-        const exercisesOrder = exercises.map(ex => ex.exercise_id);
-        const setsData: { exercise_id: any; weight: string; reps: string; duration: number; }[] = [];
-
-        // Iterate through setsLog
-        // setsLog is { [exerciseIndex]: [ { weight, reps, completed } ] }
-        Object.keys(setsLog).forEach(indexKey => {
-            const index = Number(indexKey);
-            const exercise = exercises[index];
-            if (!exercise) return;
-
-            const sets = setsLog[index];
-            sets.forEach(set => {
-                if (set.completed) {
-                    setsData.push({
-                        exercise_id: exercise.exercise_id || exercise.id,
-                        weight: set.weight,
-                        reps: set.reps,
-                        duration: set.duration
-                    });
-                }
-            });
-        });
-
-        const payload = {
-            plan_id: Number(id),
-            exercises_order: exercisesOrder,
-            sets: setsData
-        };
+        let xpEarned = 0;
 
         try {
-            setLoading(true);
+            setIsSaving(true);
+            setSaveError(null);
 
-            console.log("Sending payload:", JSON.stringify(payload, null, 2));
+            // Construct Execution Data
+            const exercisesOrder = exercises.map(ex => ex.exercise_id);
+            const setsData: { exercise_id: any; weight: string; reps: string; duration: number; }[] = [];
 
-            if (isGuest) {
+            // Iterate through setsLog
+            // setsLog is { [exerciseIndex]: [ { weight, reps, completed } ] }
+            Object.keys(setsLog).forEach(indexKey => {
+                const index = Number(indexKey);
+                const exercise = exercises[index];
+                if (!exercise) return;
+
+                const sets = setsLog[index];
+                sets.forEach(set => {
+                    if (set.completed) {
+                        setsData.push({
+                            exercise_id: exercise.exercise_id || exercise.id,
+                            weight: set.weight,
+                            reps: set.reps,
+                            duration: set.duration
+                        });
+                    }
+                });
+            });
+
+            const payload = {
+                plan_id: Number(id),
+                exercises_order: exercisesOrder,
+                sets: setsData
+            };
+
+            try {
+                setLoading(true);
+
+                console.log("Sending payload:", JSON.stringify(payload, null, 2));
+
+                const result = await trainingsService.saveTrainingSession(payload);
+                console.log("Save result:", result);
+
+                if (result?.success === false) {
+                    const backendMessage = result?.error || result?.message;
+                    const message = backendMessage || 'Training konnte nicht gespeichert werden.';
+                    setSaveError(message);
+                } else {
+                    xpEarned = Number(result?.xp_earned || 0);
+                }
+
+            } catch (error: any) {
+                console.error("finishTraining error:", error);
+                setSaveError('Training konnte nicht gespeichert werden. Bitte versuche es erneut.');
+            } finally {
+                console.log("finishTraining finally block");
+                setIsSaving(false);
                 router.replace({
                     pathname: '/workout/finished',
-                    params: { xp: 0, offline: 'true' }
+                    params: {
+                        xp: xpEarned,
+                        oldLevel: currentLevel.toString(),
+                        trainingName: plan?.name || 'Training'
+                    }
                 });
-                return;
             }
-
-            const result = await trainingsService.saveTrainingSession(payload);
-            console.log("Save result:", result);
-
-            if (result.success) {
-                // Navigate to Finished Screen
-                router.replace({
-                    pathname: '/workout/finished',
-                    params: { xp: result.xp_earned }
-                });
-            } else {
-                Alert.alert('Fehler', 'Training konnte nicht gespeichert werden.');
-            }
-
-        } catch (error: any) {
-            console.error("finishTraining error:", error);
-            if ((error.isAxiosError || error.name === 'AxiosError' || error.message === 'Network Error') && !error.response) {
-                Alert.alert('Keine Verbindung', 'Training konnte nicht gespeichert werden, da keine Verbindung besteht.');
-            } else {
-                Alert.alert('Error', 'Failed to save training session');
-            }
-        } finally {
-            console.log("finishTraining finally block");
-            setLoading(false);
-        }
-    };
-
-    const logSet = () => {
-        const isTimeBased = currentExercise?.tracking_type === 'time';
-
-        if (isTimeBased) {
-            if (!currentSecs) return;
-        } else {
-            if (!currentWeight || !currentReps) return;
-        }
-
-        const duration = parseInt(currentSecs || '0');
-
-        const newSet: SetLog = {
-            weight: isTimeBased ? '0' : currentWeight,
-            reps: isTimeBased ? '0' : currentReps,
-            duration: isTimeBased ? duration : 0,
-            completed: true
         };
 
-        setSetsLog(prev => {
-            const currentSets = prev[currentIndex] || [];
-            return {
-                ...prev,
-                [currentIndex]: [...currentSets, newSet]
+        const logSet = () => {
+            const isTimeBased = currentExercise?.tracking_type === 'time';
+
+            if (isTimeBased) {
+                if (!currentSecs) return;
+            } else {
+                if (!currentWeight || !currentReps) return;
+            }
+
+            const duration = parseInt(currentSecs || '0');
+
+            const newSet: SetLog = {
+                weight: isTimeBased ? '0' : currentWeight,
+                reps: isTimeBased ? '0' : currentReps,
+                duration: isTimeBased ? duration : 0,
+                completed: true
             };
-        });
 
-        // Reset inputs and timer, hide input row
-        // setCurrentReps(''); 
-        setSeconds(0);
-        setIsAddingSet(false);
-    };
+            setSetsLog(prev => {
+                const currentSets = prev[currentIndex] || [];
+                return {
+                    ...prev,
+                    [currentIndex]: [...currentSets, newSet]
+                };
+            });
 
-    const startAddingSet = () => {
-        setIsAddingSet(true);
-    };
+            // Reset inputs and timer, hide input row
+            // setCurrentReps(''); 
+            setSeconds(0);
+            setIsAddingSet(false);
+        };
 
-    const currentExercise = exercises[currentIndex];
-    const currentSets = setsLog[currentIndex] || [];
-    const progress = (currentIndex + 1) / (exercises.length || 1);
+        const startAddingSet = () => {
+            setIsAddingSet(true);
+        };
 
-    if (loading || !plan) {
+        const handleCancelTraining = () => {
+            setIsActive(false);
+            setSaveError(null);
+            router.replace('/');
+        };
+
+        const currentExercise = exercises[currentIndex];
+        const currentSets = setsLog[currentIndex] || [];
+        const progress = (currentIndex + 1) / (exercises.length || 1);
+
+        if (loading || !plan) {
+            return (
+                <View style={[styles.container, { backgroundColor, justifyContent: 'center', alignItems: 'center' }]}>
+                    <ThemedText>Lade Training...</ThemedText>
+                </View>
+            );
+        }
+
         return (
-            <View style={[styles.container, { backgroundColor, justifyContent: 'center', alignItems: 'center' }]}>
-                <ThemedText>Lade Training...</ThemedText>
-            </View>
+            <SafeAreaView style={[styles.container, { backgroundColor }]}>
+
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTraining}>
+                        <IconSymbol name="chevron.left" size={16} color={primaryColor} />
+                        <ThemedText style={[styles.cancelButtonText, { color: primaryColor }]}>Zurück</ThemedText>
+                    </TouchableOpacity>
+                    <View>
+                        <ThemedText style={[styles.headerTitle, { color: textColor }]}>Aktuelles Training:</ThemedText>
+                        <ThemedText type="subtitle" style={styles.headerPlanName}>{plan.name}</ThemedText>
+                    </View>
+                    <ThemedText style={styles.headerProgress}>Übung {currentIndex + 1} von {exercises.length}</ThemedText>
+                </View>
+
+                {/* Progress Bar Segmented */}
+                <View style={styles.progressBarContainer}>
+                    {exercises.map((_, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.progressBarSegment,
+                                { backgroundColor: index <= currentIndex ? '#2D74DA' : '#333' }
+                            ]}
+                        />
+                    ))}
+                </View>
+
+                <ScrollView contentContainerStyle={styles.content}>
+
+                    {/* Exercise Visuals */}
+                    <View style={styles.imageContainer}>
+                        {currentExercise?.image && (
+                            <Image
+                                source={{ uri: getImageUrl(currentExercise.image) as string }}
+                                style={styles.exerciseImage}
+                                resizeMode="cover"
+                            />
+                        )}
+                        {!currentExercise?.image && (
+                            <View style={[styles.exerciseImage, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
+                                <IconSymbol name="dumbbell.fill" size={50} color="#555" />
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Info */}
+                    <View style={styles.infoSection}>
+                        <ThemedText type="title" style={{ marginBottom: 5 }}>{currentExercise?.name}</ThemedText>
+                        <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
+                            {currentExercise?.description || 'Keine Beschreibung verfügbar.'}
+                        </ThemedText>
+                    </View>
+
+                    {/* Sets Header */}
+                    <View style={[styles.row, { marginTop: 20, marginBottom: 10 }]}>
+                        <ThemedText style={{ width: 40, color: '#aaa', fontSize: 12 }}>Satz</ThemedText>
+
+                        {currentExercise?.tracking_type === 'time' ? (
+                            <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center', marginLeft: 50 }}>Dauer (Sek)</ThemedText>
+                        ) : (
+                            <>
+                                <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center' }}>Gewicht (kg)</ThemedText>
+                                <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center' }}>Wiederholungen</ThemedText>
+                            </>
+                        )}
+                    </View>
+
+                    {/* Logged Sets List */}
+                    {currentSets.map((set, idx) => (
+                        <View key={idx} style={[styles.setRow, { opacity: 0.6 }]}>
+                            <ThemedText style={styles.setLabel}>Satz {idx + 1}</ThemedText>
+                            {currentExercise?.tracking_type === 'time' ? (
+                                <View style={[styles.inputDisplay, { backgroundColor: cardColor, marginLeft: 50 }]}>
+                                    <ThemedText>{set.duration}</ThemedText>
+                                </View>
+                            ) : (
+                                <>
+                                    <View style={[styles.inputDisplay, { backgroundColor: cardColor }]}>
+                                        <ThemedText>{set.weight}</ThemedText>
+                                    </View>
+                                    <View style={[styles.inputDisplay, { backgroundColor: cardColor }]}>
+                                        <ThemedText>{set.reps}</ThemedText>
+                                    </View>
+                                </>
+                            )}
+                            <View style={[styles.setButton, { backgroundColor: '#333', opacity: 0.5 }]}>
+                                <IconSymbol name="checkmark" size={24} color="#aaa" />
+                            </View>
+                        </View>
+                    ))}
+
+                    {/* Input Row or Add Button */}
+                    {isAddingSet ? (
+                        <View style={styles.setRow}>
+                            <ThemedText style={styles.setLabel}>Satz {currentSets.length + 1}</ThemedText>
+
+                            {currentExercise?.tracking_type === 'time' ? (
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: cardColor, color: textColor, marginLeft: 50 }]}
+                                    keyboardType="numeric"
+                                    placeholder="45"
+                                    placeholderTextColor="#555"
+                                    value={currentSecs}
+                                    onChangeText={setCurrentSecs}
+                                />
+                            ) : (
+                                <>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: cardColor, color: textColor }]}
+                                        keyboardType="numeric"
+                                        placeholder="80"
+                                        placeholderTextColor="#555"
+                                        value={currentWeight}
+                                        onChangeText={setCurrentWeight}
+                                    />
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: cardColor, color: textColor }]}
+                                        keyboardType="numeric"
+                                        placeholder="10"
+                                        placeholderTextColor="#555"
+                                        value={currentReps}
+                                        onChangeText={setCurrentReps}
+                                    />
+                                </>
+                            )}
+
+                            <TouchableOpacity style={[styles.setButton, { backgroundColor: '#333' }]} onPress={logSet}>
+                                <IconSymbol name="checkmark" size={24} color="#4CD964" />
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <TouchableOpacity style={[styles.addSetButton, { backgroundColor: cardColor }]} onPress={startAddingSet}>
+                            <IconSymbol name="plus" size={20} color={primaryColor} />
+                            <ThemedText style={{ color: primaryColor, fontWeight: 'bold' }}>Satz hinzufügen</ThemedText>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Navigation Primary */}
+                    <TouchableOpacity
+                        style={[styles.navButton, { backgroundColor: primaryColor, marginTop: 30, opacity: isSaving ? 0.7 : 1 }]}
+                        onPress={handleNextExercise}
+                        disabled={isSaving}
+                    >
+                        {isSaving ? (
+                            <View style={styles.savingRow}>
+                                <ActivityIndicator size="small" color="#fff" />
+                                <ThemedText style={styles.navButtonText}>Speichere Training...</ThemedText>
+                            </View>
+                        ) : (
+                            <ThemedText style={styles.navButtonText}>
+                                {currentIndex < exercises.length - 1 ? 'Nächste Übung' : 'Training Beenden'}
+                            </ThemedText>
+                        )}
+                    </TouchableOpacity>
+
+                    {saveError && (
+                        <ThemedText style={styles.saveErrorText}>{saveError}</ThemedText>
+                    )}
+
+                </ScrollView>
+
+                {/* Footer / Controls */}
+                <View style={[styles.footer, { backgroundColor: cardColor }]}>
+                    <View style={styles.timerContainer}>
+                        <ThemedText style={styles.timerText}>{formatTime(seconds)} Pause</ThemedText>
+                        <TouchableOpacity onPress={() => setIsActive(!isActive)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <IconSymbol name={isActive ? "pause.fill" : "play.fill"} size={16} color={primaryColor} />
+                            <ThemedText style={{ color: primaryColor, marginLeft: 5, fontWeight: 'bold' }}>
+                                {isActive ? 'Stoppen' : 'Starten'}
+                            </ThemedText>
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.prevButton, { opacity: currentIndex === 0 ? 0.3 : 1 }]}
+                        onPress={handlePrevExercise}
+                        disabled={currentIndex === 0}
+                    >
+                        <ThemedText style={{ color: '#aaa' }}>Vorherige Übung</ThemedText>
+                        <IconSymbol name="pause.fill" size={16} color="#aaa" style={{ transform: [{ rotate: '90deg' }] }} />
+                        {/* Using pause rotated as a visual placeholder for 'step backward' or generic icon */}
+                    </TouchableOpacity>
+                </View>
+
+            </SafeAreaView>
         );
     }
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor }]}>
+    const styles = StyleSheet.create({
+        container: { flex: 1 },
+        header: { padding: 20, paddingBottom: 10 },
+        cancelButton: {
+            alignSelf: 'flex-start',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            marginBottom: 10,
+            paddingVertical: 6,
+        },
+        cancelButtonText: {
+            fontSize: 14,
+            fontWeight: '700',
+        },
+        headerTitle: { fontSize: 16, fontWeight: '600', opacity: 0.75 },
+        headerPlanName: { fontSize: 24, fontWeight: 'bold' },
+        headerProgress: { color: '#aaa', marginTop: 5, textAlign: 'center', fontSize: 12 },
 
-            {/* Header */}
-            <View style={styles.header}>
-                <View>
-                    <ThemedText style={styles.headerTitle}>Aktuelles Training:</ThemedText>
-                    <ThemedText type="subtitle" style={styles.headerPlanName}>{plan.name}</ThemedText>
-                </View>
-                <ThemedText style={styles.headerProgress}>Übung {currentIndex + 1} von {exercises.length}</ThemedText>
-            </View>
+        progressBarContainer: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 20, height: 6 },
+        progressBarSegment: { flex: 1, borderRadius: 3, marginRight: 4 },
 
-            {/* Progress Bar Segmented */}
-            <View style={styles.progressBarContainer}>
-                {exercises.map((_, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.progressBarSegment,
-                            { backgroundColor: index <= currentIndex ? '#2D74DA' : '#333' }
-                        ]}
-                    />
-                ))}
-            </View>
+        content: { paddingBottom: 120 },
 
-            <ScrollView contentContainerStyle={styles.content}>
+        imageContainer: { marginHorizontal: 20, borderRadius: 12, overflow: 'hidden', marginBottom: 20, height: 250 },
+        exerciseImage: { width: '100%', height: '100%' },
 
-                {/* Exercise Visuals */}
-                <View style={styles.imageContainer}>
-                    {currentExercise?.image && (
-                        <Image
-                            source={{ uri: getImageUrl(currentExercise.image) as string }}
-                            style={styles.exerciseImage}
-                            resizeMode="cover"
-                        />
-                    )}
-                    {!currentExercise?.image && (
-                        <View style={[styles.exerciseImage, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
-                            <IconSymbol name="dumbbell.fill" size={50} color="#555" />
-                        </View>
-                    )}
-                </View>
+        infoSection: { paddingHorizontal: 20, marginBottom: 10 },
 
-                {/* Info */}
-                <View style={styles.infoSection}>
-                    <ThemedText type="title" style={{ marginBottom: 5 }}>{currentExercise?.name}</ThemedText>
-                    <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
-                        {currentExercise?.description || 'Keine Beschreibung verfügbar.'}
-                    </ThemedText>
-                </View>
+        row: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, alignItems: 'center' },
 
-                {/* Sets Header */}
-                <View style={[styles.row, { marginTop: 20, marginBottom: 10 }]}>
-                    <ThemedText style={{ width: 40, color: '#aaa', fontSize: 12 }}>Satz</ThemedText>
+        setRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, alignItems: 'center', marginBottom: 15 },
+        setLabel: { width: 40, fontWeight: 'bold' },
+        input: { width: 100, height: 50, borderRadius: 10, textAlign: 'center', fontSize: 18, fontWeight: 'bold' },
+        inputDisplay: { width: 100, height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+        setButton: { width: 50, height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: '#333' },
+        setButtonText: { color: '#4CD964', fontWeight: 'bold', fontSize: 12 },
+        checkIcon: { width: 50, alignItems: 'center' },
 
-                    {currentExercise?.tracking_type === 'time' ? (
-                        <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center', marginLeft: 50 }}>Dauer (Sek)</ThemedText>
-                    ) : (
-                        <>
-                            <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center' }}>Gewicht (kg)</ThemedText>
-                            <ThemedText style={{ width: 100, color: '#aaa', fontSize: 12, textAlign: 'center' }}>Wiederholungen</ThemedText>
-                        </>
-                    )}
-                </View>
+        addSetButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, marginHorizontal: 20, borderRadius: 10, gap: 10 },
 
-                {/* Logged Sets List */}
-                {currentSets.map((set, idx) => (
-                    <View key={idx} style={[styles.setRow, { opacity: 0.6 }]}>
-                        <ThemedText style={styles.setLabel}>Satz {idx + 1}</ThemedText>
-                        {currentExercise?.tracking_type === 'time' ? (
-                            <View style={[styles.inputDisplay, { backgroundColor: cardColor, marginLeft: 50 }]}>
-                                <ThemedText>{set.duration}</ThemedText>
-                            </View>
-                        ) : (
-                            <>
-                                <View style={[styles.inputDisplay, { backgroundColor: cardColor }]}>
-                                    <ThemedText>{set.weight}</ThemedText>
-                                </View>
-                                <View style={[styles.inputDisplay, { backgroundColor: cardColor }]}>
-                                    <ThemedText>{set.reps}</ThemedText>
-                                </View>
-                            </>
-                        )}
-                        <View style={[styles.setButton, { backgroundColor: '#333', opacity: 0.5 }]}>
-                            <IconSymbol name="checkmark" size={24} color="#aaa" />
-                        </View>
-                    </View>
-                ))}
+        navButton: { marginHorizontal: 20, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+        savingRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+        },
+        navButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+        saveErrorText: {
+            marginTop: 10,
+            marginHorizontal: 20,
+            color: '#FF6B6B',
+            textAlign: 'center',
+            fontSize: 13,
+        },
 
-                {/* Input Row or Add Button */}
-                {isAddingSet ? (
-                    <View style={styles.setRow}>
-                        <ThemedText style={styles.setLabel}>Satz {currentSets.length + 1}</ThemedText>
+        footer: {
+            position: 'absolute', bottom: 20, left: 20, right: 20,
+            height: 70, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20
+        },
+        timerContainer: {},
+        timerText: { color: '#fff', fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
 
-                        {currentExercise?.tracking_type === 'time' ? (
-                            <TextInput
-                                style={[styles.input, { backgroundColor: cardColor, color: textColor, marginLeft: 50 }]}
-                                keyboardType="numeric"
-                                placeholder="45"
-                                placeholderTextColor="#555"
-                                value={currentSecs}
-                                onChangeText={setCurrentSecs}
-                            />
-                        ) : (
-                            <>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: cardColor, color: textColor }]}
-                                    keyboardType="numeric"
-                                    placeholder="80"
-                                    placeholderTextColor="#555"
-                                    value={currentWeight}
-                                    onChangeText={setCurrentWeight}
-                                />
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: cardColor, color: textColor }]}
-                                    keyboardType="numeric"
-                                    placeholder="10"
-                                    placeholderTextColor="#555"
-                                    value={currentReps}
-                                    onChangeText={setCurrentReps}
-                                />
-                            </>
-                        )}
-
-                        <TouchableOpacity style={[styles.setButton, { backgroundColor: '#333' }]} onPress={logSet}>
-                            <IconSymbol name="checkmark" size={24} color="#4CD964" />
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <TouchableOpacity style={[styles.addSetButton, { backgroundColor: cardColor }]} onPress={startAddingSet}>
-                        <IconSymbol name="plus" size={20} color={primaryColor} />
-                        <ThemedText style={{ color: primaryColor, fontWeight: 'bold' }}>Satz hinzufügen</ThemedText>
-                    </TouchableOpacity>
-                )}
-
-                {/* Navigation Primary */}
-                <TouchableOpacity style={[styles.navButton, { backgroundColor: primaryColor, marginTop: 30 }]} onPress={handleNextExercise}>
-                    <ThemedText style={styles.navButtonText}>
-                        {currentIndex < exercises.length - 1 ? 'Nächste Übung' : 'Training Beenden'}
-                    </ThemedText>
-                </TouchableOpacity>
-
-            </ScrollView>
-
-            {/* Footer / Controls */}
-            <View style={[styles.footer, { backgroundColor: cardColor }]}>
-                <View style={styles.timerContainer}>
-                    <ThemedText style={styles.timerText}>{formatTime(seconds)} Pause</ThemedText>
-                    <TouchableOpacity onPress={() => setIsActive(!isActive)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <IconSymbol name={isActive ? "pause.fill" : "play.fill"} size={16} color={primaryColor} />
-                        <ThemedText style={{ color: primaryColor, marginLeft: 5, fontWeight: 'bold' }}>
-                            {isActive ? 'Stoppen' : 'Starten'}
-                        </ThemedText>
-                    </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.prevButton, { opacity: currentIndex === 0 ? 0.3 : 1 }]}
-                    onPress={handlePrevExercise}
-                    disabled={currentIndex === 0}
-                >
-                    <ThemedText style={{ color: '#aaa' }}>Vorherige Übung</ThemedText>
-                    <IconSymbol name="pause.fill" size={16} color="#aaa" style={{ transform: [{ rotate: '90deg' }] }} />
-                    {/* Using pause rotated as a visual placeholder for 'step backward' or generic icon */}
-                </TouchableOpacity>
-            </View>
-
-        </SafeAreaView>
-    );
-}
-
-const styles = StyleSheet.create({
-    container: { flex: 1 },
-    header: { padding: 20, paddingBottom: 10 },
-    headerTitle: { fontSize: 16, color: '#fff', fontWeight: '600' },
-    headerPlanName: { fontSize: 24, fontWeight: 'bold' },
-    headerProgress: { color: '#aaa', marginTop: 5, textAlign: 'center', fontSize: 12 },
-
-    progressBarContainer: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 20, height: 6 },
-    progressBarSegment: { flex: 1, borderRadius: 3, marginRight: 4 },
-
-    content: { paddingBottom: 120 },
-
-    imageContainer: { marginHorizontal: 20, borderRadius: 12, overflow: 'hidden', marginBottom: 20, height: 250 },
-    exerciseImage: { width: '100%', height: '100%' },
-
-    infoSection: { paddingHorizontal: 20, marginBottom: 10 },
-
-    row: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, alignItems: 'center' },
-
-    setRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, alignItems: 'center', marginBottom: 15 },
-    setLabel: { width: 40, fontWeight: 'bold' },
-    input: { width: 100, height: 50, borderRadius: 10, textAlign: 'center', fontSize: 18, fontWeight: 'bold' },
-    inputDisplay: { width: 100, height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    setButton: { width: 50, height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: '#333' },
-    setButtonText: { color: '#4CD964', fontWeight: 'bold', fontSize: 12 },
-    checkIcon: { width: 50, alignItems: 'center' },
-
-    addSetButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, marginHorizontal: 20, borderRadius: 10, gap: 10 },
-
-    navButton: { marginHorizontal: 20, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    navButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
-
-    footer: {
-        position: 'absolute', bottom: 20, left: 20, right: 20,
-        height: 70, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20
-    },
-    timerContainer: {},
-    timerText: { color: '#fff', fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
-
-    prevButton: { flexDirection: 'row', alignItems: 'center', gap: 5, padding: 10, backgroundColor: '#222', borderRadius: 8 },
-});
+        prevButton: { flexDirection: 'row', alignItems: 'center', gap: 5, padding: 10, backgroundColor: '#222', borderRadius: 8 },
+    });

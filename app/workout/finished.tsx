@@ -35,7 +35,7 @@ export default function FinishedScreen() {
 
                 <TouchableOpacity
                     style={[styles.button, { backgroundColor: primaryColor }]}
-                    onPress={() => router.dismissTo('/')}
+                    onPress={() => router.replace('/')}
                 >
                     <ThemedText style={styles.buttonText}>Zurück zum Home</ThemedText>
                 </TouchableOpacity>

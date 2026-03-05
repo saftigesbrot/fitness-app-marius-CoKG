@@ -50,6 +50,7 @@ function RootLayoutNav() {
         <Stack.Screen name="training/[id]" options={{ title: 'Training' }} />
         <Stack.Screen name="training/edit/[id]" options={{ title: 'Plan Bearbeiten' }} />
         <Stack.Screen name="workout/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="workout/finished" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
