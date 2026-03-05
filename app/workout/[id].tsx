@@ -12,6 +12,7 @@ import {
     Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -57,6 +58,9 @@ export default function TrainingSessionScreen() {
     const [breakSeconds, setBreakSeconds] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | number | null>(null);
+
+    // Track session timestamps
+    const [startTime] = useState(() => new Date().toISOString());
 
     useEffect(() => {
         if (isActive && breakSeconds > 0) {
@@ -169,10 +173,14 @@ export default function TrainingSessionScreen() {
             });
         });
 
+        const endTime = new Date().toISOString();
+
         const payload = {
             plan_id: Number(id),
             exercises_order: exercisesOrder,
-            sets: setsData
+            sets: setsData,
+            start_time: startTime,
+            end_time: endTime
         };
 
         try {
@@ -181,6 +189,23 @@ export default function TrainingSessionScreen() {
             console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
             if (isGuest) {
+                try {
+                    const offlinePayload = {
+                        ...payload,
+                        created_at: new Date().toISOString(),
+                        plan_detail: {
+                            name: plan.name,
+                            category_detail: plan.category_detail
+                        }
+                    };
+                    const stored = await AsyncStorage.getItem('offline_history');
+                    const historyArray = stored ? JSON.parse(stored) : [];
+                    historyArray.unshift(offlinePayload);
+                    await AsyncStorage.setItem('offline_history', JSON.stringify(historyArray));
+                } catch (e) {
+                    console.error("Failed to save offline history", e);
+                }
+
                 router.replace({
                     pathname: '/workout/finished',
                     params: { xp: 0, offline: 'true' }
