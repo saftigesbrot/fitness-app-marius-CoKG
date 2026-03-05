@@ -56,6 +56,23 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, []);
 
+  const getBestScorePerUser = (rows: any[]) => {
+    const bestByUser = new Map<string, any>();
+
+    rows.forEach((row: any) => {
+      const userId = row.user__id || row.user || row.id;
+      const userName = row.username || row.user__username;
+      const userKey = userId !== undefined ? `id:${userId}` : `name:${userName || 'unknown'}`;
+      const currentBest = bestByUser.get(userKey);
+
+      if (!currentBest || (row.value || 0) > (currentBest.value || 0)) {
+        bestByUser.set(userKey, row);
+      }
+    });
+
+    return Array.from(bestByUser.values()).sort((a, b) => (b.value || 0) - (a.value || 0));
+  };
+
   const loadData = async () => {
     try {
       if (!refreshing) {
@@ -151,14 +168,15 @@ export default function HomeScreen() {
       // Load leaderboard data (uses top scores)
       const leaderboard = await scoringsService.getScorings('leaderboard');
       if (Array.isArray(leaderboard)) {
+        const normalizedLeaderboard = getBestScorePerUser(leaderboard);
         // Find my rank
-        const myIndex = leaderboard.findIndex(item => item.user__username === username);
+        const myIndex = normalizedLeaderboard.findIndex(item => (item.user__username || item.username) === username);
         if (myIndex !== -1) {
           setLeaderboardData({
             myRank: myIndex + 1,
-            total: leaderboard.length,
-            above: myIndex > 0 ? leaderboard[myIndex - 1] : null,
-            below: myIndex < leaderboard.length - 1 ? leaderboard[myIndex + 1] : null
+            total: normalizedLeaderboard.length,
+            above: myIndex > 0 ? normalizedLeaderboard[myIndex - 1] : null,
+            below: myIndex < normalizedLeaderboard.length - 1 ? normalizedLeaderboard[myIndex + 1] : null
           });
         }
       }
@@ -361,7 +379,7 @@ export default function HomeScreen() {
             <View style={styles.leaderboardRow}>
               <Image source={{ uri: `https://i.pravatar.cc/150?u=${leaderboardData.above.user__username}` }} style={styles.smallAvatar} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <ThemedText style={leaderboardData.above.value >= 2000 ? { color: '#FFD700', fontWeight: '700' } : undefined}>
+                <ThemedText>
                   {leaderboardData.above.user__username} ({leaderboardData.above.value} Pkt)
                 </ThemedText>
                 <ProgressBar 
@@ -376,7 +394,7 @@ export default function HomeScreen() {
           <View style={[styles.leaderboardRow, leaderboardData?.above && { marginTop: 15 }]}>
             <Image source={{ uri: 'https://i.pravatar.cc/150?img=12' }} style={styles.smallAvatar} />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <ThemedText style={(scoringData?.value || 0) >= 2000 ? { color: '#FFD700', fontWeight: '700' } : undefined}>
+              <ThemedText>
                 {username || 'Du'} ({scoringData?.value || 0} Pkt)
               </ThemedText>
               <ProgressBar 
@@ -391,7 +409,7 @@ export default function HomeScreen() {
             <View style={[styles.leaderboardRow, { marginTop: 15 }]}>
               <Image source={{ uri: `https://i.pravatar.cc/150?u=${leaderboardData.below.user__username}` }} style={styles.smallAvatar} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <ThemedText style={leaderboardData.below.value >= 2000 ? { color: '#FFD700', fontWeight: '700' } : undefined}>
+                <ThemedText>
                   {leaderboardData.below.user__username} ({leaderboardData.below.value} Pkt)
                 </ThemedText>
                 <ProgressBar 

@@ -2,6 +2,7 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Image,
     ScrollView,
@@ -40,6 +41,8 @@ export default function TrainingSessionScreen() {
     const [exercises, setExercises] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [currentLevel, setCurrentLevel] = useState<number>(1);
 
     // State for Sets
@@ -110,6 +113,9 @@ export default function TrainingSessionScreen() {
     };
 
     const handleNextExercise = () => {
+        if (isSaving) return;
+
+        setSaveError(null);
         if (currentIndex < exercises.length - 1) {
             setCurrentIndex(prev => prev + 1);
             // Reset inputs for next exercise
@@ -135,8 +141,11 @@ export default function TrainingSessionScreen() {
     };
 
     const finishTraining = async () => {
+        let xpEarned = 0;
+
         try {
-            setLoading(true);
+            setIsSaving(true);
+            setSaveError(null);
 
             // Construct Execution Data
             const exercisesOrder = exercises.map(ex => ex.exercise_id);
@@ -172,25 +181,28 @@ export default function TrainingSessionScreen() {
             const result = await trainingsService.saveTrainingSession(payload);
             console.log("Save result:", result);
 
-            if (result.success) {
-                // Navigate to Finished Screen
-                router.replace({
-                    pathname: '/workout/finished',
-                    params: { 
-                        xp: result.xp_earned,
-                        oldLevel: currentLevel.toString()
-                    }
-                });
+            if (result?.success === false) {
+                const backendMessage = result?.error || result?.message;
+                const message = backendMessage || 'Training konnte nicht gespeichert werden.';
+                setSaveError(message);
             } else {
-                Alert.alert('Fehler', 'Training konnte nicht gespeichert werden.');
+                xpEarned = Number(result?.xp_earned || 0);
             }
 
         } catch (error) {
             console.error("finishTraining error:", error);
-            Alert.alert('Error', 'Failed to save training session');
+            setSaveError('Training konnte nicht gespeichert werden. Bitte versuche es erneut.');
         } finally {
             console.log("finishTraining finally block");
-            setLoading(false);
+            setIsSaving(false);
+            router.replace({
+                pathname: '/workout/finished',
+                params: {
+                    xp: xpEarned,
+                    oldLevel: currentLevel.toString(),
+                    trainingName: plan?.name || 'Training'
+                }
+            });
         }
     };
 
@@ -221,6 +233,12 @@ export default function TrainingSessionScreen() {
         setIsAddingSet(true);
     };
 
+    const handleCancelTraining = () => {
+        setIsActive(false);
+        setSaveError(null);
+        router.replace('/');
+    };
+
     const currentExercise = exercises[currentIndex];
     const currentSets = setsLog[currentIndex] || [];
     const progress = (currentIndex + 1) / (exercises.length || 1);
@@ -238,8 +256,12 @@ export default function TrainingSessionScreen() {
 
             {/* Header */}
             <View style={styles.header}>
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelTraining}>
+                    <IconSymbol name="chevron.left" size={16} color={primaryColor} />
+                    <ThemedText style={[styles.cancelButtonText, { color: primaryColor }]}>Zurück</ThemedText>
+                </TouchableOpacity>
                 <View>
-                    <ThemedText style={styles.headerTitle}>Aktuelles Training:</ThemedText>
+                    <ThemedText style={[styles.headerTitle, { color: textColor }]}>Aktuelles Training:</ThemedText>
                     <ThemedText type="subtitle" style={styles.headerPlanName}>{plan.name}</ThemedText>
                 </View>
                 <ThemedText style={styles.headerProgress}>Übung {currentIndex + 1} von {exercises.length}</ThemedText>
@@ -342,11 +364,26 @@ export default function TrainingSessionScreen() {
                 )}
 
                 {/* Navigation Primary */}
-                <TouchableOpacity style={[styles.navButton, { backgroundColor: primaryColor, marginTop: 30 }]} onPress={handleNextExercise}>
-                    <ThemedText style={styles.navButtonText}>
-                        {currentIndex < exercises.length - 1 ? 'Nächste Übung' : 'Training Beenden'}
-                    </ThemedText>
+                <TouchableOpacity
+                    style={[styles.navButton, { backgroundColor: primaryColor, marginTop: 30, opacity: isSaving ? 0.7 : 1 }]}
+                    onPress={handleNextExercise}
+                    disabled={isSaving}
+                >
+                    {isSaving ? (
+                        <View style={styles.savingRow}>
+                            <ActivityIndicator size="small" color="#fff" />
+                            <ThemedText style={styles.navButtonText}>Speichere Training...</ThemedText>
+                        </View>
+                    ) : (
+                        <ThemedText style={styles.navButtonText}>
+                            {currentIndex < exercises.length - 1 ? 'Nächste Übung' : 'Training Beenden'}
+                        </ThemedText>
+                    )}
                 </TouchableOpacity>
+
+                {saveError && (
+                    <ThemedText style={styles.saveErrorText}>{saveError}</ThemedText>
+                )}
 
             </ScrollView>
 
@@ -380,7 +417,19 @@ export default function TrainingSessionScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { padding: 20, paddingBottom: 10 },
-    headerTitle: { fontSize: 16, color: '#fff', fontWeight: '600' },
+    cancelButton: {
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 10,
+        paddingVertical: 6,
+    },
+    cancelButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    headerTitle: { fontSize: 16, fontWeight: '600', opacity: 0.75 },
     headerPlanName: { fontSize: 24, fontWeight: 'bold' },
     headerProgress: { color: '#aaa', marginTop: 5, textAlign: 'center', fontSize: 12 },
 
@@ -407,7 +456,19 @@ const styles = StyleSheet.create({
     addSetButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, marginHorizontal: 20, borderRadius: 10, gap: 10 },
 
     navButton: { marginHorizontal: 20, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    savingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
     navButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+    saveErrorText: {
+        marginTop: 10,
+        marginHorizontal: 20,
+        color: '#FF6B6B',
+        textAlign: 'center',
+        fontSize: 13,
+    },
 
     footer: {
         position: 'absolute', bottom: 20, left: 20, right: 20,

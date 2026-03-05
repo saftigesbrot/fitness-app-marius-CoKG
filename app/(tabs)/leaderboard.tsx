@@ -19,6 +19,7 @@ export default function LeaderboardScreen() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [now, setNow] = useState(new Date());
     const { username } = useSession();
 
     const backgroundColor = useThemeColor({}, 'background');
@@ -29,6 +30,14 @@ export default function LeaderboardScreen() {
     useEffect(() => {
         loadLeaderboard();
     }, [filter, mode]);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setNow(new Date());
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
 
     // Load data when screen is focused
     useFocusEffect(
@@ -43,6 +52,23 @@ export default function LeaderboardScreen() {
         await loadLeaderboard();
         setRefreshing(false);
     }, [filter, mode]);
+
+    const getBestScorePerUser = (rows: any[]) => {
+        const bestByUser = new Map<string, any>();
+
+        rows.forEach((row: any) => {
+            const userId = row.user__id || row.user || row.id;
+            const userName = row.username || row.user__username;
+            const userKey = userId !== undefined ? `id:${userId}` : `name:${userName || 'unknown'}`;
+            const currentBest = bestByUser.get(userKey);
+
+            if (!currentBest || (row.value || 0) > (currentBest.value || 0)) {
+                bestByUser.set(userKey, row);
+            }
+        });
+
+        return Array.from(bestByUser.values());
+    };
 
     const loadLeaderboard = async () => {
         try {
@@ -74,9 +100,11 @@ export default function LeaderboardScreen() {
             }
 
             if (Array.isArray(data)) {
+                const normalizedData = mode === 'score' ? getBestScorePerUser(data) : data;
+
                 // If backend returns data sorted, we might not need this, but good safety
                 // Determine sort key: 'value' (score) or 'level'/'xp'
-                const sorted = [...data].sort((a, b) => {
+                const sorted = [...normalizedData].sort((a, b) => {
                     if (mode === 'level') {
                         if (b.level === a.level) return (b.xp || 0) - (a.xp || 0);
                         return (b.level || 0) - (a.level || 0);
@@ -148,6 +176,52 @@ export default function LeaderboardScreen() {
         const xpForCurrent = calculateTotalXpForLevel(currentLevel);
         return xpForNext - xpForCurrent;
     };
+
+    const formatRemainingTime = (milliseconds: number): string => {
+        const safeMs = Math.max(0, milliseconds);
+        const totalSeconds = Math.floor(safeMs / 1000);
+
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        const twoDigits = (value: number) => value.toString().padStart(2, '0');
+
+        if (days > 0) {
+            return `${days}T ${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}`;
+        }
+
+        return `${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}`;
+    };
+
+    const getCountdownForFilter = (currentDate: Date, currentFilter: TimeFilter) => {
+        if (currentFilter === 'Täglich') {
+            const endOfDay = new Date(currentDate);
+            endOfDay.setHours(24, 0, 0, 0);
+            return {
+                remaining: formatRemainingTime(endOfDay.getTime() - currentDate.getTime()),
+            };
+        }
+
+        if (currentFilter === 'Wöchentlich') {
+            const dayOfWeek = currentDate.getDay();
+            const daysUntilNextMonday = ((8 - dayOfWeek) % 7) || 7;
+            const endOfWeek = new Date(currentDate);
+            endOfWeek.setDate(currentDate.getDate() + daysUntilNextMonday);
+            endOfWeek.setHours(0, 0, 0, 0);
+            return {
+                remaining: formatRemainingTime(endOfWeek.getTime() - currentDate.getTime()),
+            };
+        }
+
+        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+        return {
+            remaining: formatRemainingTime(endOfMonth.getTime() - currentDate.getTime()),
+        };
+    };
+
+    const activeCountdown = mode === 'score' ? getCountdownForFilter(now, filter) : null;
 
     const renderItem = ({ item }: { item: any }) => {
         // Determine badge color based on rank
@@ -280,14 +354,27 @@ export default function LeaderboardScreen() {
                         const myRank = users.find(u => u.isMe);
                         if (myRank) {
                             return (
-                                <View style={styles.summaryContent}>
-                                    <ThemedText style={styles.summaryLabel}>Mein Rang</ThemedText>
-                                    <ThemedText style={[styles.summaryValue, { color: primaryColor }]}>
-                                        #{myRank.rank}
-                                    </ThemedText>
-                                    <ThemedText style={styles.summarySubtext}>
-                                        {myRank.points}
-                                    </ThemedText>
+                                <View style={styles.summaryMainRow}>
+                                    <View style={styles.summarySideBlock}>
+                                        {activeCountdown && (
+                                            <View style={styles.countdownRow}>
+                                                <IconSymbol name="clock.fill" size={14} color="#8E8E93" />
+                                                <ThemedText style={styles.countdownText}>{activeCountdown.remaining}</ThemedText>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    <View style={styles.summaryContent}>
+                                        <ThemedText style={styles.summaryLabel}>Mein Rang</ThemedText>
+                                        <ThemedText style={[styles.summaryValue, { color: primaryColor }]}>
+                                            #{myRank.rank}
+                                        </ThemedText>
+                                        <ThemedText style={styles.summarySubtext}>
+                                            {myRank.points}
+                                        </ThemedText>
+                                    </View>
+
+                                    <View style={styles.summarySideBlock} />
                                 </View>
                             );
                         }
@@ -392,9 +479,31 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
     },
+    summaryMainRow: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    summarySideBlock: {
+        width: 118,
+        minHeight: 36,
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+    },
     summaryContent: {
+        flex: 1,
         alignItems: 'center',
         gap: 4,
+    },
+    countdownRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    countdownText: {
+        fontSize: 12,
+        color: '#8E8E93',
+        fontWeight: '600',
     },
     summaryLabel: {
         fontSize: 12,
