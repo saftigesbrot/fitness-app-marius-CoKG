@@ -1,11 +1,6 @@
-<<<<<<< HEAD
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-=======
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
->>>>>>> UI-Changes
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -24,14 +19,10 @@ export default function LeaderboardScreen() {
     const [filter, setFilter] = useState<TimeFilter>('Täglich');
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-<<<<<<< HEAD
-    const { username, isGuest, session, signOut } = useSession();
-    const router = useRouter();
-=======
     const [refreshing, setRefreshing] = useState(false);
     const [now, setNow] = useState(new Date());
-    const { username } = useSession();
->>>>>>> UI-Changes
+    const { username, isGuest, session, signOut } = useSession();
+    const router = useRouter();
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
@@ -325,7 +316,6 @@ export default function LeaderboardScreen() {
             <View style={styles.container}>
                 <ThemedText type="title" style={styles.headerTitle}>Leaderboard</ThemedText>
 
-<<<<<<< HEAD
                 {isGuest ? (
                     <View style={styles.guestContainer}>
                         <IconSymbol name="lock.fill" size={64} color={primaryColor} />
@@ -368,7 +358,10 @@ export default function LeaderboardScreen() {
                                         key={f}
                                         style={[
                                             styles.filterButton,
-                                            filter === f && { backgroundColor: '#666' } // Active state
+                                            filter === f && { 
+                                                backgroundColor: '#2C2C2E',
+                                                borderColor: primaryColor,
+                                            }
                                         ]}
                                         onPress={() => setFilter(f)}>
                                         <ThemedText style={[styles.filterText, filter === f && styles.filterTextActive]}>
@@ -380,22 +373,45 @@ export default function LeaderboardScreen() {
                         )}
 
                         {/* My Rank Summary */}
-                        <View style={styles.summaryContainer}>
+                        <View style={[styles.summaryContainer, { backgroundColor: cardColor }]}>
                             {(() => {
                                 const myRank = users.find(u => u.isMe);
                                 if (myRank) {
                                     return (
-                                        <ThemedText style={styles.summaryText}>
-                                            Mein Rang: <ThemedText style={{ color: '#4CD964', fontWeight: 'bold' }}>{myRank.rank}. ({myRank.points})</ThemedText>
-                                        </ThemedText>
+                                        <View style={styles.summaryMainRow}>
+                                            <View style={styles.summarySideBlock}>
+                                                {activeCountdown && (
+                                                    <View style={styles.countdownRow}>
+                                                        <IconSymbol name="clock.fill" size={14} color="#8E8E93" />
+                                                        <ThemedText style={styles.countdownText}>{activeCountdown.remaining}</ThemedText>
+                                                    </View>
+                                                )}
+                                            </View>
+
+                                            <View style={styles.summaryContent}>
+                                                <ThemedText style={styles.summaryLabel}>Mein Rang</ThemedText>
+                                                <ThemedText style={[styles.summaryValue, { color: primaryColor }]}>
+                                                    #{myRank.rank}
+                                                </ThemedText>
+                                                <ThemedText style={styles.summarySubtext}>
+                                                    {myRank.points}
+                                                </ThemedText>
+                                            </View>
+
+                                            <View style={styles.summarySideBlock} />
+                                        </View>
                                     );
                                 }
-                                return <ThemedText style={styles.summaryText}>Du bist noch nicht im Ranking.</ThemedText>;
+                                return (
+                                    <ThemedText style={styles.summaryText}>
+                                        Du bist noch nicht im Ranking.
+                                    </ThemedText>
+                                );
                             })()}
                         </View>
 
                         {/* List */}
-                        {loading ? (
+                        {loading && users.length === 0 ? (
                             <ActivityIndicator size="large" color={primaryColor} />
                         ) : (
                             <FlatList
@@ -405,105 +421,17 @@ export default function LeaderboardScreen() {
                                 contentContainerStyle={styles.listContent}
                                 showsVerticalScrollIndicator={false}
                                 ListEmptyComponent={<ThemedText style={{ textAlign: 'center', marginTop: 20, color: '#aaa' }}>Keine Einträge gefunden.</ThemedText>}
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        tintColor={primaryColor}
+                                        colors={[primaryColor]}
+                                    />
+                                }
                             />
                         )}
                     </>
-=======
-                {/* Mode Toggle */}
-                <View style={[styles.toggleContainer, { backgroundColor: cardColor }]}>
-                    <TouchableOpacity
-                        style={[styles.toggleButton, mode === 'score' && { backgroundColor: primaryColor }]}
-                        onPress={() => setMode('score')}>
-                        <ThemedText style={mode === 'score' ? styles.toggleTextActive : styles.toggleText}>Punkte</ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.toggleButton, mode === 'level' && { backgroundColor: primaryColor }]}
-                        onPress={() => setMode('level')}>
-                        <ThemedText style={mode === 'level' ? styles.toggleTextActive : styles.toggleText}>Level</ThemedText>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Filter Tabs - Only show in Score Mode */}
-                {mode === 'score' && (
-                    <View style={[styles.filterContainer, { backgroundColor: cardColor }]}>
-                        {(['Täglich', 'Wöchentlich', 'Monatlich'] as TimeFilter[]).map((f) => (
-                            <TouchableOpacity
-                                key={f}
-                                style={[
-                                    styles.filterButton,
-                                    filter === f && { 
-                                        backgroundColor: '#2C2C2E',
-                                        borderColor: primaryColor,
-                                    }
-                                ]}
-                                onPress={() => setFilter(f)}>
-                                <ThemedText style={[styles.filterText, filter === f && styles.filterTextActive]}>
-                                    {f}
-                                </ThemedText>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                )}
-
-                {/* My Rank Summary */}
-                <View style={[styles.summaryContainer, { backgroundColor: cardColor }]}>
-                    {(() => {
-                        const myRank = users.find(u => u.isMe);
-                        if (myRank) {
-                            return (
-                                <View style={styles.summaryMainRow}>
-                                    <View style={styles.summarySideBlock}>
-                                        {activeCountdown && (
-                                            <View style={styles.countdownRow}>
-                                                <IconSymbol name="clock.fill" size={14} color="#8E8E93" />
-                                                <ThemedText style={styles.countdownText}>{activeCountdown.remaining}</ThemedText>
-                                            </View>
-                                        )}
-                                    </View>
-
-                                    <View style={styles.summaryContent}>
-                                        <ThemedText style={styles.summaryLabel}>Mein Rang</ThemedText>
-                                        <ThemedText style={[styles.summaryValue, { color: primaryColor }]}>
-                                            #{myRank.rank}
-                                        </ThemedText>
-                                        <ThemedText style={styles.summarySubtext}>
-                                            {myRank.points}
-                                        </ThemedText>
-                                    </View>
-
-                                    <View style={styles.summarySideBlock} />
-                                </View>
-                            );
-                        }
-                        return (
-                            <ThemedText style={styles.summaryText}>
-                                Du bist noch nicht im Ranking.
-                            </ThemedText>
-                        );
-                    })()}
-                </View>
-
-                {/* List */}
-                {loading ? (
-                    <ActivityIndicator size="large" color={primaryColor} />
-                ) : (
-                    <FlatList
-                        data={users}
-                        renderItem={renderItem}
-                        keyExtractor={(item, index) => item.name + index}
-                        contentContainerStyle={styles.listContent}
-                        showsVerticalScrollIndicator={false}
-                        ListEmptyComponent={<ThemedText style={{ textAlign: 'center', marginTop: 20, color: '#aaa' }}>Keine Einträge gefunden.</ThemedText>}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                tintColor={primaryColor}
-                                colors={[primaryColor]}
-                            />
-                        }
-                    />
->>>>>>> UI-Changes
                 )}
             </View>
         </SafeAreaView>
@@ -665,7 +593,6 @@ const styles = StyleSheet.create({
         color: '#aaa',
         fontSize: 12,
     },
-<<<<<<< HEAD
     mySubText: {
         color: 'rgba(255,255,255,0.8)',
         fontSize: 12,
@@ -697,6 +624,4 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
     }
-=======
->>>>>>> UI-Changes
 });

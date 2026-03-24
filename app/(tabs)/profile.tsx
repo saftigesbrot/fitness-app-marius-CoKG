@@ -21,48 +21,21 @@ export default function ProfileScreen() {
     const primaryColor = useThemeColor({}, 'primary');
     const textColor = useThemeColor({}, 'text');
 
-<<<<<<< HEAD
-    const { data: levelData } = useUserLevel();
-    const { data: scoringData } = useScorings('current');
-    const { data: plans = [] } = useTrainingPlans();
+    const { data: levelData, refetch: refetchLevel } = useUserLevel();
+    const { data: scoringData, refetch: refetchScoring } = useScorings('current');
+    const { data: plans = [], refetch: refetchPlans } = useTrainingPlans();
 
-    const currentScore = scoringData?.value || 0;
-=======
-    const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
-    const [currentScore, setCurrentScore] = useState<number>(0);
-    const [plans, setPlans] = useState<any[]>([]);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Load data when screen is focused
-    useFocusEffect(
-        useCallback(() => {
-            loadProfileData();
-        }, [])
-    );
-
-    // Pull to refresh handler
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await loadProfileData();
+        if (refetchLevel) await refetchLevel();
+        if (refetchScoring) await refetchScoring();
+        if (refetchPlans) await refetchPlans();
         setRefreshing(false);
-    }, []);
+    }, [refetchLevel, refetchScoring, refetchPlans]);
 
-    const loadProfileData = async () => {
-        try {
-            const [level, score, fetchedPlans] = await Promise.all([
-                scoringsService.getLevel(),
-                scoringsService.getScorings('current'),
-                trainingsService.getTrainingPlans()
-            ]);
-
-            if (level) setLevelData(level);
-            if (score && score.value !== undefined) setCurrentScore(score.value);
-            if (Array.isArray(fetchedPlans)) setPlans(fetchedPlans);
-        } catch (error) {
-            console.error("Failed to load profile data:", error);
-        }
-    };
->>>>>>> UI-Changes
+    const currentScore = scoringData?.value || 0;
 
     const handleLogout = () => {
         if (Platform.OS === 'web') {

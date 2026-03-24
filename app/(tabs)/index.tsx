@@ -30,63 +30,95 @@ export default function HomeScreen() {
   const textColor = useThemeColor({}, 'text');
 
   const { username } = useSession();
-<<<<<<< HEAD
-  const { data: levelData, isLoading: isLoadingLevel } = useUserLevel();
-  const { data: scoringData, isLoading: isLoadingScoring } = useScorings('current');
-  const { data: recommendations, isLoading: isLoadingRecs } = useTrainingRecommendations();
-  const { data: leaderboard, isLoading: isLoadingLeaderboard } = useScorings('leaderboard');
-  const { data: plans, isLoading: isLoadingPlans } = useTrainingPlans();
+  const { data: levelData, isLoading: isLoadingLevel, refetch: refetchLevel } = useUserLevel();
+  const { data: scoringData, isLoading: isLoadingScoring, refetch: refetchScoring } = useScorings('current');
+  const { data: recommendations, isLoading: isLoadingRecs, refetch: refetchRecs } = useTrainingRecommendations();
+  const { data: leaderboard, isLoading: isLoadingLeaderboard, refetch: refetchLeaderboard } = useScorings('leaderboard');
+  const { data: plans, isLoading: isLoadingPlans, refetch: refetchPlans } = useTrainingPlans();
 
   const currentScore = scoringData?.value || 0;
 
-  // Derive leaderboard data
-  const leaderboardData = (() => {
-    if (!Array.isArray(leaderboard)) return null;
-    const myIndex = leaderboard.findIndex(item => item.user__username === username);
-    if (myIndex === -1) return null;
-
-    return {
-      myRank: myIndex + 1,
-      total: leaderboard.length,
-      above: myIndex > 0 ? leaderboard[myIndex - 1] : null,
-      below: myIndex < leaderboard.length - 1 ? leaderboard[myIndex + 1] : null,
-      topScore: leaderboard[myIndex].value
-    };
-  })();
-
-  const topScore = leaderboardData?.topScore || 0;
-  const loading = isLoadingLevel || isLoadingScoring || isLoadingRecs || isLoadingLeaderboard || isLoadingPlans;
-=======
-  const [levelData, setLevelData] = useState<{ level: number; xp: number; xp_current: number; xp_needed: number } | null>(null);
-  const [scoringData, setScoringData] = useState<{ value: number } | null>(null);
-  const [recommendations, setRecommendations] = useState<{ plans: any[]; exercises: any[] } | null>(null);
-  const [leaderboardData, setLeaderboardData] = useState<{ myRank: number; total: number; above: any; below: any } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [newLevel, setNewLevel] = useState(0);
   const [showPointsMilestoneModal, setShowPointsMilestoneModal] = useState(false);
   const [milestonePoints, setMilestonePoints] = useState(0);
-  const previousLevelRef = useRef<number | null>(null);
 
-  // Load data when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
-  // Pull to refresh handler
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    if (refetchLevel) await refetchLevel();
+    if (refetchScoring) await refetchScoring();
+    if (refetchRecs) await refetchRecs();
+    if (refetchLeaderboard) await refetchLeaderboard();
+    if (refetchPlans) await refetchPlans();
     setRefreshing(false);
-  }, []);
+  }, [refetchLevel, refetchScoring, refetchRecs, refetchLeaderboard, refetchPlans]);
 
-  const getBestScorePerUser = (rows: any[]) => {
+  // Check for level up
+  useEffect(() => {
+    const checkLevelUp = async () => {
+      if (levelData && levelData.level) {
+        try {
+          const storedLevel = await SecureStore.getItemAsync('lastKnownLevel');
+          if (storedLevel) {
+            const lastLevel = parseInt(storedLevel, 10);
+            if (levelData.level > lastLevel) {
+              setNewLevel(levelData.level);
+              setShowLevelUpModal(true);
+            }
+          }
+          await SecureStore.setItemAsync('lastKnownLevel', levelData.level.toString());
+        } catch (error) {
+          console.error('Error checking level up:', error);
+        }
+      }
+    };
+    checkLevelUp();
+  }, [levelData?.level]);
+
+  // Check for score milestones
+  useEffect(() => {
+    const checkMilestones = async () => {
+      if (scoringData?.value !== undefined) {
+        const currentPoints = scoringData.value;
+        try {
+          const storedMilestones = await SecureStore.getItemAsync('pointsMilestones');
+          const milestones = storedMilestones ? JSON.parse(storedMilestones) : {};
+          
+          if (currentPoints >= 2000 && !milestones.reached2000) {
+            milestones.reached2000 = true;
+            setMilestonePoints(2000);
+            setShowPointsMilestoneModal(true);
+            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
+          } else if (currentPoints >= 1500 && !milestones.reached1500) {
+            milestones.reached1500 = true;
+            setMilestonePoints(1500);
+            setShowPointsMilestoneModal(true);
+            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
+          } else if (currentPoints < 500 && !milestones.below500) {
+            milestones.below500 = true;
+            setMilestonePoints(500);
+            setShowPointsMilestoneModal(true);
+            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
+          } else if (currentPoints >= 500 && milestones.below500) {
+            milestones.below500 = false;
+            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
+          }
+        } catch (error) {
+          console.error('Error checking points milestones:', error);
+        }
+      }
+    };
+    checkMilestones();
+  }, [scoringData?.value]);
+
+  // Derive leaderboard data
+  const leaderboardData = (() => {
+    if (!Array.isArray(leaderboard)) return null;
+    
+    // Group by user to find best score
     const bestByUser = new Map<string, any>();
-
-    rows.forEach((row: any) => {
+    leaderboard.forEach((row: any) => {
       const userId = row.user__id || row.user || row.id;
       const userName = row.username || row.user__username;
       const userKey = userId !== undefined ? `id:${userId}` : `name:${userName || 'unknown'}`;
@@ -97,123 +129,22 @@ export default function HomeScreen() {
       }
     });
 
-    return Array.from(bestByUser.values()).sort((a, b) => (b.value || 0) - (a.value || 0));
-  };
+    const normalizedLeaderboard = Array.from(bestByUser.values()).sort((a, b) => (b.value || 0) - (a.value || 0));
+    
+    const myIndex = normalizedLeaderboard.findIndex(item => (item.username || item.user__username) === username);
+    if (myIndex === -1) return null;
 
-  const loadData = async () => {
-    try {
-      if (!refreshing) {
-        setLoading(true);
-      }
-      
-      console.log('Loading level data...');
-      const level = await scoringsService.getLevel();
-      console.log('Level data received:', level);
-      
-      // Check for level up by comparing with stored level
-      if (level && level.level) {
-        try {
-          const storedLevel = await SecureStore.getItemAsync('lastKnownLevel');
-          console.log('Stored level:', storedLevel, 'Current level:', level.level);
-          
-          if (storedLevel) {
-            const lastLevel = parseInt(storedLevel, 10);
-            if (level.level > lastLevel) {
-              console.log('🎉 LEVEL UP DETECTED!', lastLevel, '->', level.level);
-              setNewLevel(level.level);
-              setShowLevelUpModal(true);
-            }
-          }
-          
-          // Store current level
-          await SecureStore.setItemAsync('lastKnownLevel', level.level.toString());
-        } catch (error) {
-          console.error('Error checking level up:', error);
-        }
-      }
-      
-      setLevelData(level);
+    return {
+      myRank: myIndex + 1,
+      total: normalizedLeaderboard.length,
+      above: myIndex > 0 ? normalizedLeaderboard[myIndex - 1] : null,
+      below: myIndex < normalizedLeaderboard.length - 1 ? normalizedLeaderboard[myIndex + 1] : null,
+      topScore: normalizedLeaderboard[myIndex].value
+    };
+  })();
 
-      console.log('Loading scoring data...');
-      const score = await scoringsService.getScorings('current');
-      console.log('Scoring data received:', score);
-      if (score) {
-        const currentPoints = score.value || 0;
-        setScoringData({
-          value: currentPoints
-        });
-        
-        // Check for points milestones
-        try {
-          const storedMilestones = await SecureStore.getItemAsync('pointsMilestones');
-          const milestones = storedMilestones ? JSON.parse(storedMilestones) : {};
-          
-          // Check if we reached 2000 points for the first time
-          if (currentPoints >= 2000 && !milestones.reached2000) {
-            console.log('🏆 Reached 2000 points milestone!');
-            milestones.reached2000 = true;
-            setMilestonePoints(2000);
-            setShowPointsMilestoneModal(true);
-            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
-          }
-          // Check if we reached 1500 points for the first time
-          else if (currentPoints >= 1500 && !milestones.reached1500) {
-            console.log('🌟 Reached 1500 points milestone!');
-            milestones.reached1500 = true;
-            setMilestonePoints(1500);
-            setShowPointsMilestoneModal(true);
-            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
-          }
-          // Check if we dropped below 500 points
-          else if (currentPoints < 500 && !milestones.below500) {
-            console.log('😔 Dropped below 500 points');
-            milestones.below500 = true;
-            setMilestonePoints(500);
-            setShowPointsMilestoneModal(true);
-            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
-          }
-          // Reset the below500 flag if we're back above 500
-          else if (currentPoints >= 500 && milestones.below500) {
-            milestones.below500 = false;
-            await SecureStore.setItemAsync('pointsMilestones', JSON.stringify(milestones));
-          }
-        } catch (error) {
-          console.error('Error checking points milestones:', error);
-        }
-      }
-
-      // Load recommendations (new public plans and exercises)
-      try {
-        const recs = await trainingsService.getRecommendations();
-        if (recs) {
-          setRecommendations(recs);
-        }
-      } catch (error) {
-        console.log('Error loading recommendations:', error);
-      }
-
-      // Load leaderboard data (uses top scores)
-      const leaderboard = await scoringsService.getScorings('leaderboard');
-      if (Array.isArray(leaderboard)) {
-        const normalizedLeaderboard = getBestScorePerUser(leaderboard);
-        // Find my rank
-        const myIndex = normalizedLeaderboard.findIndex(item => (item.user__username || item.username) === username);
-        if (myIndex !== -1) {
-          setLeaderboardData({
-            myRank: myIndex + 1,
-            total: normalizedLeaderboard.length,
-            above: myIndex > 0 ? normalizedLeaderboard[myIndex - 1] : null,
-            below: myIndex < normalizedLeaderboard.length - 1 ? normalizedLeaderboard[myIndex + 1] : null
-          });
-        }
-      }
-    } catch (error) {
-      console.log('Error loading home data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
->>>>>>> UI-Changes
+  const topScore = leaderboardData?.topScore || 0;
+  const loading = isLoadingLevel || isLoadingScoring || isLoadingRecs || isLoadingLeaderboard || isLoadingPlans;
 
   const handleStartTraining = async () => {
     // ... (logic remains mostly same but uses 'plans' from hook)
@@ -271,44 +202,7 @@ export default function HomeScreen() {
           <TouchableOpacity onPress={() => router.push('/notifications')}>
             <IconSymbol name="bell.fill" size={24} color={iconColor} />
           </TouchableOpacity>
-          {/* TEST: Level Up Modal Button - Remove in production */}
-          <TouchableOpacity 
-            onPress={() => {
-              setNewLevel(levelData?.level || 8);
-              setShowLevelUpModal(true);
-            }}
-            style={{ marginLeft: 10 }}
-          >
-            <ThemedText style={{ fontSize: 20 }}>🎉</ThemedText>
-          </TouchableOpacity>
-          {/* TEST: Points Milestone Buttons - Remove in production */}
-          <TouchableOpacity 
-            onPress={() => {
-              setMilestonePoints(500);
-              setShowPointsMilestoneModal(true);
-            }}
-            style={{ marginLeft: 5 }}
-          >
-            <ThemedText style={{ fontSize: 20 }}>😔</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => {
-              setMilestonePoints(1500);
-              setShowPointsMilestoneModal(true);
-            }}
-            style={{ marginLeft: 5 }}
-          >
-            <ThemedText style={{ fontSize: 20 }}>⭐</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => {
-              setMilestonePoints(2000);
-              setShowPointsMilestoneModal(true);
-            }}
-            style={{ marginLeft: 5 }}
-          >
-            <ThemedText style={{ fontSize: 20 }}>👑</ThemedText>
-          </TouchableOpacity>
+
         </View>
 
         {/* Daily Progress Card */}

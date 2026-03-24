@@ -19,7 +19,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { trainingsService } from '@/services/trainings';
 import { scoringsService } from '@/services/scorings';
-import { API_URL } from '@/services/api';
+import { API_URL, getImageUrl } from '@/services/api';
+import { useSession } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -85,34 +86,39 @@ export default function TrainingSessionScreen() {
 
             const planData = await trainingsService.getTrainingPlans(Number(id));
             setPlan(planData);
-            setLoading(false);
 
-            if (planData.order && Array.isArray(planData.order)) {
-                if (allExercisesData && Array.isArray(allExercisesData)) {
-                    // Map from cache
-                    const mappedExercises = planData.order.map((exId: number) => {
-                        return allExercisesData.find(ex => ex.exercise_id === exId || ex.id === exId);
-                    }).filter(Boolean);
+            let loadedExercises: any[] = [];
+            if (planData.exercises && Array.isArray(planData.exercises)) {
+                loadedExercises = planData.exercises.map((e: any) => e.exercise ? e.exercise : e);
+            }
 
-                    if (mappedExercises.length > 0) {
-                        setExercises(mappedExercises);
-                    }
+            if (planData.order && Array.isArray(planData.order) && loadedExercises.length > 0) {
+                const orderedExercises = planData.order.map((exId: number) => {
+                    return loadedExercises.find((ex: any) => (ex.exercise_id === exId || ex.id === exId));
+                }).filter(Boolean);
+                
+                if (orderedExercises.length > 0) {
+                    setExercises(orderedExercises);
+                } else {
+                    setExercises(loadedExercises);
                 }
-
-                if (planData.exercises && Array.isArray(planData.exercises) && planData.exercises.length > 0 && exercises.length === 0) {
-                    const normalized = planData.exercises.map((e: any) => e.exercise ? e.exercise : e);
-                    setExercises(normalized);
-                }
-            } else if (Array.isArray(planData.exercises)) {
-                const normalized = planData.exercises.map((e: any) => e.exercise ? e.exercise : e);
-                setExercises(normalized);
+            } else {
+                setExercises(loadedExercises);
             }
 
             setIsActive(true); // Start timer automatically
-        } else if (!isLoadingPlan) {
+        } catch (error) {
+            console.error('Failed to load session:', error);
+        } finally {
             setLoading(false);
         }
-    }, [planData, isLoadingPlan, allExercisesData]);
+    };
+
+    useEffect(() => {
+        if (id) {
+            loadSession();
+        }
+    }, [id]);
 
     const formatTime = (totalSeconds: number) => {
         const mins = Math.floor(totalSeconds / 60);
@@ -154,72 +160,71 @@ export default function TrainingSessionScreen() {
     const finishTraining = async () => {
         let xpEarned = 0;
 
-        try {
-            setIsSaving(true);
-            setSaveError(null);
+        setIsSaving(true);
+        setSaveError(null);
 
-            // Construct Execution Data
-            const exercisesOrder = exercises.map(ex => ex.exercise_id);
-            const setsData: { exercise_id: any; weight: string; reps: string; duration: number; }[] = [];
+        // Construct Execution Data
+        const exercisesOrder = exercises.map(ex => ex.exercise_id);
+        const setsData: { exercise_id: any; weight: string; reps: string; duration: number; }[] = [];
 
-            // Iterate through setsLog
-            // setsLog is { [exerciseIndex]: [ { weight, reps, completed } ] }
-            Object.keys(setsLog).forEach(indexKey => {
-                const index = Number(indexKey);
-                const exercise = exercises[index];
-                if (!exercise) return;
+        // Iterate through setsLog
+        // setsLog is { [exerciseIndex]: [ { weight, reps, completed } ] }
+        Object.keys(setsLog).forEach(indexKey => {
+            const index = Number(indexKey);
+            const exercise = exercises[index];
+            if (!exercise) return;
 
-                const sets = setsLog[index];
-                sets.forEach(set => {
-                    if (set.completed) {
-                        setsData.push({
-                            exercise_id: exercise.exercise_id || exercise.id,
-                            weight: set.weight,
-                            reps: set.reps,
-                            duration: set.duration
-                        });
-                    }
-                });
-            });
-
-            const payload = {
-                plan_id: Number(id),
-                exercises_order: exercisesOrder,
-                sets: setsData
-            };
-
-            try {
-                setLoading(true);
-
-                console.log("Sending payload:", JSON.stringify(payload, null, 2));
-
-                const result = await trainingsService.saveTrainingSession(payload);
-                console.log("Save result:", result);
-
-                if (result?.success === false) {
-                    const backendMessage = result?.error || result?.message;
-                    const message = backendMessage || 'Training konnte nicht gespeichert werden.';
-                    setSaveError(message);
-                } else {
-                    xpEarned = Number(result?.xp_earned || 0);
+            const sets = setsLog[index];
+            sets.forEach(set => {
+                if (set.completed) {
+                    setsData.push({
+                        exercise_id: exercise.exercise_id || exercise.id,
+                        weight: set.weight,
+                        reps: set.reps,
+                        duration: set.duration
+                    });
                 }
+            });
+        });
 
-            } catch (error: any) {
-                console.error("finishTraining error:", error);
-                setSaveError('Training konnte nicht gespeichert werden. Bitte versuche es erneut.');
-            } finally {
-                console.log("finishTraining finally block");
-                setIsSaving(false);
-                router.replace({
-                    pathname: '/workout/finished',
-                    params: {
-                        xp: xpEarned,
-                        oldLevel: currentLevel.toString(),
-                        trainingName: plan?.name || 'Training'
-                    }
-                });
-            }
+        const payload = {
+            plan_id: Number(id),
+            exercises_order: exercisesOrder,
+            sets: setsData
         };
+
+        try {
+            setLoading(true);
+
+            console.log("Sending payload:", JSON.stringify(payload, null, 2));
+
+            const result = await trainingsService.saveTrainingSession(payload);
+            console.log("Save result:", result);
+
+            if (result?.success === false) {
+                const backendMessage = result?.error || result?.message;
+                const message = backendMessage || 'Training konnte nicht gespeichert werden.';
+                setSaveError(message);
+            } else {
+                xpEarned = Number(result?.xp_earned || 0);
+            }
+
+        } catch (error: any) {
+            console.error("finishTraining error:", error);
+            setSaveError('Training konnte nicht gespeichert werden. Bitte versuche es erneut.');
+        } finally {
+            console.log("finishTraining finally block");
+            setIsSaving(false);
+            router.replace({
+                pathname: '/workout/finished',
+                params: {
+                    xp: xpEarned,
+                    oldLevel: currentLevel.toString(),
+                    trainingName: plan?.name || 'Training'
+                }
+            });
+        }
+    };
 
         const logSet = () => {
             const isTimeBased = currentExercise?.tracking_type === 'time';
