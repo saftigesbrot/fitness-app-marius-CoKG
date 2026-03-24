@@ -279,8 +279,8 @@ export default function HomeScreen() {
           <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/exercise/create')}>
             <ThemedText>Eigene Übung</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/profile')}>
-            <ThemedText>Profil</ThemedText>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/games')}>
+            <ThemedText>Spiele</ThemedText>
           </TouchableOpacity>
         </View>
 
