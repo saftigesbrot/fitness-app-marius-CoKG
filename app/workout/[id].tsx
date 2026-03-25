@@ -1,4 +1,4 @@
-
+import { DUMMY_TRAINING_PLANS } from '@/constants/guestData';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import {
@@ -74,17 +74,34 @@ export default function TrainingSessionScreen() {
         };
     }, [isActive]);
 
+    const { isGuest } = useSession();
+
     const loadSession = async () => {
         try {
             setLoading(true);
 
             // Load current level before workout
-            const levelData = await scoringsService.getLevel();
-            if (levelData) {
-                setCurrentLevel(levelData.level);
+            if (!isGuest) {
+                try {
+                    const levelData = await scoringsService.getLevel();
+                    if (levelData) {
+                        setCurrentLevel(levelData.level);
+                    }
+                } catch (e) {
+                    // Ignore errors like CanceledError gracefully
+                }
+            } else {
+                setCurrentLevel(1);
             }
 
-            const planData = await trainingsService.getTrainingPlans(Number(id));
+            let planData;
+            if (isGuest) {
+                planData = DUMMY_TRAINING_PLANS.find(p => p.id === Number(id));
+                if (!planData) throw new Error("Training Plan not found");
+            } else {
+                planData = await trainingsService.getTrainingPlans(Number(id));
+            }
+            
             setPlan(planData);
 
             let loadedExercises: any[] = [];
@@ -155,8 +172,6 @@ export default function TrainingSessionScreen() {
         }
     };
 
-    const { isGuest } = useSession();
-
     const finishTraining = async () => {
         let xpEarned = 0;
 
@@ -196,17 +211,22 @@ export default function TrainingSessionScreen() {
         try {
             setLoading(true);
 
-            console.log("Sending payload:", JSON.stringify(payload, null, 2));
-
-            const result = await trainingsService.saveTrainingSession(payload);
-            console.log("Save result:", result);
-
-            if (result?.success === false) {
-                const backendMessage = result?.error || result?.message;
-                const message = backendMessage || 'Training konnte nicht gespeichert werden.';
-                setSaveError(message);
+            if (isGuest) {
+                console.log("Guest mode: skipping save");
+                xpEarned = 150; // Mock XP
             } else {
-                xpEarned = Number(result?.xp_earned || 0);
+                console.log("Sending payload:", JSON.stringify(payload, null, 2));
+
+                const result = await trainingsService.saveTrainingSession(payload);
+                console.log("Save result:", result);
+
+                if (result?.success === false) {
+                    const backendMessage = result?.error || result?.message;
+                    const message = backendMessage || 'Training konnte nicht gespeichert werden.';
+                    setSaveError(message);
+                } else {
+                    xpEarned = Number(result?.xp_earned || 0);
+                }
             }
 
         } catch (error: any) {
