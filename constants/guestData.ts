@@ -211,19 +211,105 @@ export const DUMMY_EXERCISES = [
 ];
 
 export const DUMMY_TRAINING_PLANS = [
-    {
-        id: 1,
-        name: 'Ganzkörper Workout',
-        description: 'Ein perfekter Einstieg für Gäste, um alle Muskelgruppen zu trainieren.',
-        category: 101,
-        category_detail: DUMMY_PLAN_CATEGORIES.find(c => c.id === 101),
-        creator_name: 'fitnessapp',
-        order: [1, 3, 2, 4],
-        exercises: [DUMMY_EXERCISES[0], DUMMY_EXERCISES[2], DUMMY_EXERCISES[1], DUMMY_EXERCISES[3]]
-    }
-];
+{
+    id: 1,
+    name: 'Ganzkörper Workout',
+    description: 'Ein perfekter Einstieg für Gäste, um alle Muskelgruppen zu trainieren.',
+    category: 101,
+    category_detail: DUMMY_PLAN_CATEGORIES[0],
+    creator_name: 'fitnessapp',
 
-export const DUMMY_RECOMMENDATIONS = {
-    plans: [DUMMY_TRAINING_PLANS[0]],
-    exercises: [DUMMY_EXERCISES[0]]
-};
+    // Reihenfolge der Übungen (IDs)
+    order: [3, 5, 2, 1, 12, 13, 4],
+
+    // Übungen
+    exercises: [
+        DUMMY_EXERCISES[2],  // Kniebeugen
+        DUMMY_EXERCISES[4],  // Romanian Deadlifts
+        DUMMY_EXERCISES[1],  // Klimmzüge
+        DUMMY_EXERCISES[0],  // Liegestütze
+        DUMMY_EXERCISES[11], // Schulterdrücken
+        DUMMY_EXERCISES[12], // Bizeps Curls
+        DUMMY_EXERCISES[3],  // Plank
+    ],
+},
+{
+    id: 2,
+    name: 'Unterkörper Workout',
+    description: 'Trainingsplan für Unterkörper und Gesäß. Fokus auf Muskelwachstum in Quadrizeps, hinterer Beinmuskulatur und Waden.',
+    category: 103,
+    category_detail: DUMMY_PLAN_CATEGORIES[2],
+    creator_name: 'fitnessapp',
+
+    // Reihenfolge der Übungen
+    order: [3, 5, 6, 8, 7],
+
+    exercises: [
+        DUMMY_EXERCISES[2], // Kniebeugen
+        DUMMY_EXERCISES[4], // Romanian Deadlifts
+        DUMMY_EXERCISES[5], // Bulgarian Split Squats
+        DUMMY_EXERCISES[7], // Ausfallschritte
+        DUMMY_EXERCISES[6], // Wadenheben
+    ]
+},
+{
+  id: 3,
+  name: 'Oberkörper Workout',
+  description:
+    'Trainingsplan für Oberkörper. Fokus auf Muskelwachstum in Rücken, Brust, Schultern, Armen und Core-Stabilität.',
+  category: 102,
+  category_detail: DUMMY_PLAN_CATEGORIES[1],
+  creator_name: 'fitnessapp',
+
+  // Reihenfolge der Übungen (IDs)
+  order: [2, 1, 12, 11, 13, 4],
+
+  exercises: [
+    DUMMY_EXERCISES[1],  // Klimmzüge (Rücken)
+    DUMMY_EXERCISES[0],  // Liegestütze (Brust)
+    DUMMY_EXERCISES[11], // Schulterdrücken (Schultern)
+    DUMMY_EXERCISES[10], // Reverse Flys (oberer Rücken / hintere Schulter)
+    DUMMY_EXERCISES[12], // Bizeps Curls (Arme)
+    DUMMY_EXERCISES[3],  // Plank (Core / time)
+  ],
+},
+{
+  id: 4,
+  name: 'Push Workout',
+  description:
+    'Push-Trainingsplan für Brust, Schultern und Trizeps. Fokus auf Muskelwachstum durch Druckbewegungen.',
+  category: 104,
+  category_detail: DUMMY_PLAN_CATEGORIES[3],
+  creator_name: 'fitnessapp',
+
+  // Reihenfolge der Übungen
+  order: [1, 12, 9, 10],
+
+  exercises: [
+    DUMMY_EXERCISES[0],  // Liegestütze (Brust)
+    DUMMY_EXERCISES[11], // Schulterdrücken (Schultern)
+    DUMMY_EXERCISES[8],  // Seitheben (Schultern)
+    DUMMY_EXERCISES[9],  // Frontheben (vordere Schulter)
+  ],
+}, 
+{
+  id: 5,
+  name: 'Pull Workout',
+  description:
+    'Pull-Trainingsplan für Rücken und Bizeps. Fokus auf Muskelwachstum durch Zugbewegungen.',
+  category: 105,
+  category_detail: DUMMY_PLAN_CATEGORIES[4],
+  creator_name: 'fitnessapp',
+
+  // Reihenfolge der Übungen
+  order: [2, 11, 13],
+
+  exercises: [
+    DUMMY_EXERCISES[1],  // Klimmzüge (Rücken)
+    DUMMY_EXERCISES[10], // Reverse Flys (oberer Rücken)
+    DUMMY_EXERCISES[12], // Bizeps Curls (Bizeps)
+  ],
+}
+
+
+];
