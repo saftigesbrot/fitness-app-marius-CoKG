@@ -9,6 +9,7 @@ export const TRAINING_KEYS = {
     detail: (id: number) => [...TRAINING_KEYS.details(), id] as const,
     categories: ['training-categories'] as const,
     recommendations: ['training-recommendations'] as const,
+    history: ['training-history'] as const,
 };
 
 export function useTrainingPlans(query: string = '') {
@@ -46,5 +47,13 @@ export function useTrainingRecommendations() {
         queryKey: TRAINING_KEYS.recommendations,
         queryFn: trainingsService.getRecommendations,
         staleTime: 1000 * 60 * 15, // 15 minutes (more dynamic)
+    });
+}
+
+export function useTrainingHistory() {
+    return useQuery({
+        queryKey: TRAINING_KEYS.history,
+        queryFn: trainingsService.getTrainingHistory,
+        staleTime: 1000 * 60 * 5, // 5 minutes
     });
 }

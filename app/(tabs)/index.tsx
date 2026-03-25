@@ -271,16 +271,16 @@ export default function HomeScreen() {
         <ThemedText type="subtitle" style={styles.sectionTitle}>Schnellzugriff</ThemedText>
         <View style={styles.grid}>
           <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/explore')}>
-            <ThemedText>Übungsbibliothek</ThemedText>
+            <ThemedText numberOfLines={1} adjustsFontSizeToFit style={{ textAlign: 'center' }}>Übungsbibliothek</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/training/create')}>
-            <ThemedText>Neuer Plan</ThemedText>
+            <ThemedText numberOfLines={1} adjustsFontSizeToFit style={{ textAlign: 'center' }}>Neuer Plan</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/exercise/create')}>
-            <ThemedText>Eigene Übung</ThemedText>
+          <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/history')}>
+            <ThemedText numberOfLines={1} adjustsFontSizeToFit style={{ textAlign: 'center' }}>Letzte Trainings</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.gridItem, { backgroundColor: cardColor }]} onPress={() => router.push('/games')}>
-            <ThemedText>Spiele</ThemedText>
+            <ThemedText numberOfLines={1} adjustsFontSizeToFit style={{ textAlign: 'center' }}>Spiele</ThemedText>
           </TouchableOpacity>
         </View>
 

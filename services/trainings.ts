@@ -37,4 +37,12 @@ export const trainingsService = {
         const response = await api.get('/training-last-executed');
         return response.data;
     },
+    getTrainingHistory: async () => {
+        const response = await api.get('/training-history');
+        return response.data;
+    },
+    deleteTrainingHistory: async (plan_exercise_id: number) => {
+        const response = await api.delete(`/training-history/${plan_exercise_id}`);
+        return response.data;
+    },
 };

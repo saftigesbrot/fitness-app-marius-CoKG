@@ -147,7 +147,15 @@ export default function TrainingPlanDetailScreen() {
                             )}
                             <View style={styles.exerciseInfo}>
                                 <ThemedText type="defaultSemiBold">{ex.name}</ThemedText>
-                                <ThemedText style={styles.exerciseCategory}>{ex.category_detail?.name || ex.category_name}</ThemedText>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 10 }}>
+                                    <ThemedText style={styles.exerciseCategory}>{ex.category_detail?.name || ex.category_name}</ThemedText>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                        <IconSymbol name={ex.tracking_type === 'time' ? 'timer' : 'repeat'} size={12} color="#aaa" />
+                                        <ThemedText style={{ fontSize: 12, color: '#aaa' }}>
+                                            {ex.tracking_type === 'time' ? 'Auf Zeit' : 'Reps'}
+                                        </ThemedText>
+                                    </View>
+                                </View>
                             </View>
                             <IconSymbol name="chevron.right" size={20} color="#aaa" />
                         </TouchableOpacity>

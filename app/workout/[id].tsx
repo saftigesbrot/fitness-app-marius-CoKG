@@ -1,4 +1,5 @@
 import { DUMMY_TRAINING_PLANS } from '@/constants/guestData';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import {
@@ -57,14 +58,23 @@ export default function TrainingSessionScreen() {
     const [isAddingSet, setIsAddingSet] = useState(true); // Default to true for the first set
 
     // Timer State
-    const [seconds, setSeconds] = useState(0);
+    const [breakSeconds, setBreakSeconds] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | number | null>(null);
 
+    // Track session timestamps
+    const [startTime] = useState(() => new Date().toISOString());
+
     useEffect(() => {
-        if (isActive) {
+        if (isActive && breakSeconds > 0) {
             intervalRef.current = setInterval(() => {
-                setSeconds(prev => prev + 1);
+                setBreakSeconds(prev => {
+                    if (prev <= 1) {
+                        setIsActive(false);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
             }, 1000);
         } else if (!isActive && intervalRef.current) {
             clearInterval(intervalRef.current);
@@ -72,7 +82,7 @@ export default function TrainingSessionScreen() {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [isActive]);
+    }, [isActive, breakSeconds]);
 
     const { isGuest } = useSession();
 
@@ -152,7 +162,6 @@ export default function TrainingSessionScreen() {
             setCurrentWeight('');
             setCurrentReps('');
             setCurrentSecs('');
-            setSeconds(0); // Reset timer
             setIsAddingSet(true); // Auto-show input for first set of next exercise
         } else {
             // Finish Training - Log and call directly to debug/fix "nothing happens"
@@ -167,7 +176,6 @@ export default function TrainingSessionScreen() {
             setCurrentWeight('');
             setCurrentReps('');
             setCurrentSecs('');
-            setSeconds(0);
             setIsAddingSet(true);
         }
     };
@@ -202,10 +210,14 @@ export default function TrainingSessionScreen() {
             });
         });
 
+        const endTime = new Date().toISOString();
+
         const payload = {
             plan_id: Number(id),
             exercises_order: exercisesOrder,
-            sets: setsData
+            sets: setsData,
+            start_time: startTime,
+            end_time: endTime
         };
 
         try {
@@ -214,6 +226,23 @@ export default function TrainingSessionScreen() {
             if (isGuest) {
                 console.log("Guest mode: skipping save");
                 xpEarned = 150; // Mock XP
+                
+                try {
+                    const offlinePayload = {
+                        ...payload,
+                        created_at: new Date().toISOString(),
+                        plan_detail: {
+                            name: plan?.name,
+                            category_detail: plan?.category_detail
+                        }
+                    };
+                    const stored = await AsyncStorage.getItem('offline_history');
+                    const historyArray = stored ? JSON.parse(stored) : [];
+                    historyArray.unshift(offlinePayload);
+                    await AsyncStorage.setItem('offline_history', JSON.stringify(historyArray));
+                } catch (e) {
+                    console.error("Failed to save offline history", e);
+                }
             } else {
                 console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
@@ -272,12 +301,11 @@ export default function TrainingSessionScreen() {
                 };
             });
 
-            // Reset inputs and timer, hide input row
-            // setCurrentReps(''); 
-            setSeconds(0);
-            setIsAddingSet(false);
-        };
-
+            // Reset inputs and start break timer
+        setBreakSeconds(plan?.break_time || 60);
+        setIsActive(true);
+        setIsAddingSet(false);
+    };
         const startAddingSet = () => {
             setIsAddingSet(true);
         };
@@ -348,10 +376,18 @@ export default function TrainingSessionScreen() {
                     </View>
 
                     {/* Info */}
-                    <View style={styles.infoSection}>
-                        <ThemedText type="title" style={{ marginBottom: 5 }}>{currentExercise?.name}</ThemedText>
-                        <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
-                            {currentExercise?.description || 'Keine Beschreibung verfügbar.'}
+                <View style={styles.infoSection}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                        <ThemedText type="title" style={{ flex: 1 }}>{currentExercise?.name}</ThemedText>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#333', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 5 }}>
+                            <IconSymbol name={currentExercise?.tracking_type === 'time' ? 'timer' : 'repeat'} size={14} color="#fff" />
+                            <ThemedText style={{ fontSize: 12, color: '#fff', fontWeight: 'bold' }}>
+                                {currentExercise?.tracking_type === 'time' ? 'Auf Zeit' : 'Auf Wiederholungen'}
+                            </ThemedText>
+                        </View>
+                    </View>
+                    <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
+                        {currentExercise?.description || 'Keine Beschreibung verfügbar.'}
                         </ThemedText>
                     </View>
 
@@ -464,16 +500,16 @@ export default function TrainingSessionScreen() {
                 </ScrollView>
 
                 {/* Footer / Controls */}
-                <View style={[styles.footer, { backgroundColor: cardColor }]}>
-                    <View style={styles.timerContainer}>
-                        <ThemedText style={styles.timerText}>{formatTime(seconds)} Pause</ThemedText>
-                        <TouchableOpacity onPress={() => setIsActive(!isActive)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <IconSymbol name={isActive ? "pause.fill" : "play.fill"} size={16} color={primaryColor} />
-                            <ThemedText style={{ color: primaryColor, marginLeft: 5, fontWeight: 'bold' }}>
-                                {isActive ? 'Stoppen' : 'Starten'}
-                            </ThemedText>
-                        </TouchableOpacity>
-                    </View>
+            <View style={[styles.footer, { backgroundColor: cardColor }]}>
+                <View style={styles.timerContainer}>
+                    <ThemedText style={styles.timerText}>{formatTime(breakSeconds)} Pause</ThemedText>
+                    <TouchableOpacity onPress={() => setIsActive(!isActive)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <IconSymbol name={isActive ? "pause.fill" : "play.fill"} size={16} color={primaryColor} />
+                        <ThemedText style={{ color: primaryColor, marginLeft: 5, fontWeight: 'bold' }}>
+                            {isActive ? 'Pausieren' : 'Weiter'}
+                        </ThemedText>
+                    </TouchableOpacity>
+                </View>
 
                     <TouchableOpacity
                         style={[styles.prevButton, { opacity: currentIndex === 0 ? 0.3 : 1 }]}
