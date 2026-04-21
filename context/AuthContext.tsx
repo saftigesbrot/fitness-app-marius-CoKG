@@ -9,6 +9,8 @@ interface AuthContextType {
     isGuest?: boolean;
     username?: string | null;
     isLoading: boolean;
+    guestDifficulty: string;
+    setGuestDifficulty: (level: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +21,8 @@ const AuthContext = createContext<AuthContextType>({
     isGuest: false,
     username: null,
     isLoading: false,
+    guestDifficulty: 'mittel',
+    setGuestDifficulty: () => null,
 });
 
 export function useSession() {
@@ -36,8 +40,10 @@ export function SessionProvider(props: React.PropsWithChildren) {
     const [[, refreshToken], setRefreshToken] = useStorageState('refresh_token');
     const [[, username], setUsername] = useStorageState('username');
     const [[isGuestLoading, isGuestRaw], setGuest] = useStorageState('is_guest');
+    const [[difficultyLoading, difficultyRaw], setDifficulty] = useStorageState('guest_difficulty');
 
     const isGuest = isGuestRaw === 'true';
+    const guestDifficulty = difficultyRaw || 'mittel';
 
     const signIn = (accessToken: string, newRefreshToken: string, user: string) => {
         setSession(accessToken);
@@ -48,6 +54,9 @@ export function SessionProvider(props: React.PropsWithChildren) {
 
     const signInAsGuest = () => {
         setGuest('true');
+        if (!difficultyRaw) {
+            setDifficulty('mittel');
+        }
     };
 
     const signOut = () => {
@@ -55,6 +64,7 @@ export function SessionProvider(props: React.PropsWithChildren) {
         setRefreshToken(null);
         setUsername(null);
         setGuest(null);
+        setDifficulty(null);
     };
 
     return (
@@ -65,8 +75,10 @@ export function SessionProvider(props: React.PropsWithChildren) {
                 signOut,
                 session,
                 isGuest,
-                isLoading: isLoading || isGuestLoading,
+                isLoading: isLoading || isGuestLoading || difficultyLoading,
                 username,
+                guestDifficulty,
+                setGuestDifficulty: setDifficulty,
             }}
         >
             {props.children}

@@ -39,6 +39,7 @@ export default function TrainingSessionScreen() {
     const cardColor = useThemeColor({}, 'card');
     const primaryColor = '#2D74DA';
     const textColor = useThemeColor({}, 'text');
+    const { isGuest, guestDifficulty } = useSession();
 
     const [plan, setPlan] = useState<any>(null);
     const [exercises, setExercises] = useState<any[]>([]);
@@ -84,14 +85,20 @@ export default function TrainingSessionScreen() {
         };
     }, [isActive, breakSeconds]);
 
-    const { isGuest } = useSession();
+
 
     const loadSession = async () => {
         try {
             setLoading(true);
 
-            // Load current level before workout
-            if (!isGuest) {
+            let planData = null;
+
+            if (isGuest) {
+                const { DUMMY_TRAINING_PLANS } = require('@/constants/guestData');
+                planData = DUMMY_TRAINING_PLANS.find((p: any) => p.id === Number(id));
+                if (!planData) throw new Error("Training Plan not found");
+                setCurrentLevel(1);
+            } else {
                 try {
                     const levelData = await scoringsService.getLevel();
                     if (levelData) {
@@ -100,18 +107,14 @@ export default function TrainingSessionScreen() {
                 } catch (e) {
                     // Ignore errors like CanceledError gracefully
                 }
-            } else {
-                setCurrentLevel(1);
-            }
-
-            let planData;
-            if (isGuest) {
-                planData = DUMMY_TRAINING_PLANS.find(p => p.id === Number(id));
-                if (!planData) throw new Error("Training Plan not found");
-            } else {
+                
                 planData = await trainingsService.getTrainingPlans(Number(id));
             }
-            
+
+            if (!planData) {
+                console.log('Error: Plan not found');
+                return;
+            }
             setPlan(planData);
 
             let loadedExercises: any[] = [];
@@ -225,7 +228,7 @@ export default function TrainingSessionScreen() {
 
             if (isGuest) {
                 console.log("Guest mode: skipping save");
-                xpEarned = 150; // Mock XP
+                xpEarned = 250; // Mock XP
                 
                 try {
                     const offlinePayload = {
@@ -360,12 +363,12 @@ export default function TrainingSessionScreen() {
                 <ScrollView contentContainerStyle={styles.content}>
 
                     {/* Exercise Visuals */}
-                    <View style={styles.imageContainer}>
+                    <View style={[styles.imageContainer, { backgroundColor: '#ffffff' }]}>
                         {currentExercise?.image && (
                             <Image
                                 source={{ uri: getImageUrl(currentExercise.image) as string }}
                                 style={styles.exerciseImage}
-                                resizeMode="cover"
+                                resizeMode="contain"
                             />
                         )}
                         {!currentExercise?.image && (
@@ -389,6 +392,17 @@ export default function TrainingSessionScreen() {
                     <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
                         {currentExercise?.description || 'Keine Beschreibung verfügbar.'}
                         </ThemedText>
+                        
+                        {isGuest && guestDifficulty && currentExercise?.difficulties?.[guestDifficulty] && (
+                            <>
+                                <ThemedText type="defaultSemiBold" style={{ marginTop: 15, marginBottom: 5, fontSize: 14 }}>
+                                    Schwierigkeit: {guestDifficulty.charAt(0).toUpperCase() + guestDifficulty.slice(1)}
+                                </ThemedText>
+                                <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
+                                    {currentExercise.difficulties[guestDifficulty]}
+                                </ThemedText>
+                            </>
+                        )}
                     </View>
 
                     {/* Sets Header */}
