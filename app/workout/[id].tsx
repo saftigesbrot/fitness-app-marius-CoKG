@@ -38,6 +38,7 @@ export default function TrainingSessionScreen() {
     const cardColor = useThemeColor({}, 'card');
     const primaryColor = '#2D74DA';
     const textColor = useThemeColor({}, 'text');
+    const { isGuest, guestDifficulty } = useSession();
 
     const [plan, setPlan] = useState<any>(null);
     const [exercises, setExercises] = useState<any[]>([]);
@@ -78,13 +79,28 @@ export default function TrainingSessionScreen() {
         try {
             setLoading(true);
 
-            // Load current level before workout
-            const levelData = await scoringsService.getLevel();
-            if (levelData) {
-                setCurrentLevel(levelData.level);
+            let planData = null;
+
+            if (isGuest) {
+                const { DUMMY_TRAINING_PLANS } = require('@/constants/guestData');
+                planData = DUMMY_TRAINING_PLANS.find((p: any) => p.id === Number(id));
+                setCurrentLevel(1);
+            } else {
+                try {
+                    const levelData = await scoringsService.getLevel();
+                    if (levelData) {
+                        setCurrentLevel(levelData.level);
+                    }
+                } catch(e) {}
+                
+                planData = await trainingsService.getTrainingPlans(Number(id));
             }
 
-            const planData = await trainingsService.getTrainingPlans(Number(id));
+            if (!planData) {
+                console.log('Error: Plan not found');
+                return;
+            }
+
             setPlan(planData);
 
             let loadedExercises: any[] = [];
@@ -155,8 +171,6 @@ export default function TrainingSessionScreen() {
         }
     };
 
-    const { isGuest } = useSession();
-
     const finishTraining = async () => {
         let xpEarned = 0;
 
@@ -196,17 +210,22 @@ export default function TrainingSessionScreen() {
         try {
             setLoading(true);
 
-            console.log("Sending payload:", JSON.stringify(payload, null, 2));
-
-            const result = await trainingsService.saveTrainingSession(payload);
-            console.log("Save result:", result);
-
-            if (result?.success === false) {
-                const backendMessage = result?.error || result?.message;
-                const message = backendMessage || 'Training konnte nicht gespeichert werden.';
-                setSaveError(message);
+            if (isGuest) {
+                // Mock offline points
+                xpEarned = 250;
             } else {
-                xpEarned = Number(result?.xp_earned || 0);
+                console.log("Sending payload:", JSON.stringify(payload, null, 2));
+
+                const result = await trainingsService.saveTrainingSession(payload);
+                console.log("Save result:", result);
+
+                if (result?.success === false) {
+                    const backendMessage = result?.error || result?.message;
+                    const message = backendMessage || 'Training konnte nicht gespeichert werden.';
+                    setSaveError(message);
+                } else {
+                    xpEarned = Number(result?.xp_earned || 0);
+                }
             }
 
         } catch (error: any) {
@@ -312,12 +331,12 @@ export default function TrainingSessionScreen() {
                 <ScrollView contentContainerStyle={styles.content}>
 
                     {/* Exercise Visuals */}
-                    <View style={styles.imageContainer}>
+                    <View style={[styles.imageContainer, { backgroundColor: '#ffffff' }]}>
                         {currentExercise?.image && (
                             <Image
                                 source={{ uri: getImageUrl(currentExercise.image) as string }}
                                 style={styles.exerciseImage}
-                                resizeMode="cover"
+                                resizeMode="contain"
                             />
                         )}
                         {!currentExercise?.image && (
@@ -333,6 +352,17 @@ export default function TrainingSessionScreen() {
                         <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
                             {currentExercise?.description || 'Keine Beschreibung verfügbar.'}
                         </ThemedText>
+                        
+                        {isGuest && guestDifficulty && currentExercise?.difficulties?.[guestDifficulty] && (
+                            <>
+                                <ThemedText type="defaultSemiBold" style={{ marginTop: 15, marginBottom: 5, fontSize: 14 }}>
+                                    Schwierigkeit: {guestDifficulty.charAt(0).toUpperCase() + guestDifficulty.slice(1)}
+                                </ThemedText>
+                                <ThemedText style={{ color: '#aaa', fontSize: 14 }}>
+                                    {currentExercise.difficulties[guestDifficulty]}
+                                </ThemedText>
+                            </>
+                        )}
                     </View>
 
                     {/* Sets Header */}

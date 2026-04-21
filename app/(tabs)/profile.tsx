@@ -15,7 +15,7 @@ import { useUserLevel, useScorings } from '@/hooks/useProfile';
 import { useTrainingPlans } from '@/hooks/useTrainingPlans';
 
 export default function ProfileScreen() {
-    const { signOut, username } = useSession();
+    const { signOut, username, isGuest, guestDifficulty, setGuestDifficulty } = useSession();
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
     const primaryColor = useThemeColor({}, 'primary');
@@ -124,6 +124,46 @@ export default function ProfileScreen() {
                         </View>
                     </View>
                 </ThemedView>
+
+                {/* Guest Settings */}
+                {isGuest && (
+                    <>
+                        <View style={styles.sectionHeader}>
+                            <ThemedText type="subtitle">Gast-Einstellungen</ThemedText>
+                        </View>
+                        <ThemedView style={[styles.card, { backgroundColor: cardColor }]}>
+                            <ThemedText style={{ marginBottom: 15, fontWeight: 'bold' }}>Übungsschwierigkeit</ThemedText>
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                                {['leicht', 'mittel', 'schwer'].map((level) => (
+                                    <TouchableOpacity 
+                                        key={level} 
+                                        style={{ 
+                                            flex: 1, 
+                                            paddingVertical: 10, 
+                                            borderRadius: 8, 
+                                            backgroundColor: guestDifficulty === level ? '#2D74DA' : backgroundColor,
+                                            alignItems: 'center',
+                                            borderWidth: 1,
+                                            borderColor: guestDifficulty === level ? '#2D74DA' : '#333'
+                                        }}
+                                        onPress={() => setGuestDifficulty(level)}
+                                    >
+                                        <ThemedText style={{ 
+                                            color: guestDifficulty === level ? '#fff' : textColor, 
+                                            textTransform: 'capitalize',
+                                            fontWeight: guestDifficulty === level ? 'bold' : 'normal'
+                                        }}>
+                                            {level}
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <ThemedText style={{ color: '#aaa', fontSize: 12, marginTop: 10 }}>
+                                Passe die Beschreibungen der Übungen an dein Level an.
+                            </ThemedText>
+                        </ThemedView>
+                    </>
+                )}
 
                 {/* Personal Records (Static for now) */}
                 <View style={styles.sectionHeader}>

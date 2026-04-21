@@ -5,12 +5,36 @@ import { Platform } from 'react-native';
 // Use localhost for iOS simulator, 10.0.2.2 for Android emulator
 export const API_URL = 'http://127.0.0.1:8000';
 
-export const getImageUrl = (imagePath: string | null | undefined) => {
+import { Image } from 'react-native';
+
+export const getImageUrl = (imagePath: any) => {
     if (!imagePath) return null;
-    if (imagePath.startsWith('http') || imagePath.startsWith('file://') || imagePath.startsWith('content://') || imagePath.startsWith('data:') || imagePath.startsWith('blob:')) {
-        return imagePath;
+    
+    if (typeof imagePath === 'number') {
+        const source = Image.resolveAssetSource(imagePath);
+        return source ? source.uri : null;
     }
-    return `${API_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+
+    if (typeof imagePath === 'object' && imagePath !== null && imagePath.uri) {
+        return imagePath.uri;
+    }
+
+    if (typeof imagePath === 'string') {
+        if (
+            imagePath.startsWith('http') || 
+            imagePath.startsWith('file://') || 
+            imagePath.startsWith('content://') || 
+            imagePath.startsWith('data:') || 
+            imagePath.startsWith('blob:') ||
+            imagePath.startsWith('/_expo/') ||
+            imagePath.startsWith('/assets/')
+        ) {
+            return imagePath;
+        }
+        return `${API_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+    }
+    
+    return null;
 };
 
 const api = axios.create({

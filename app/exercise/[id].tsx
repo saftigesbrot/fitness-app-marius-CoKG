@@ -17,7 +17,7 @@ export default function ExerciseDetailScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { isGuest, username: sessionUsername } = useSession();
+    const { isGuest, username: sessionUsername, guestDifficulty } = useSession();
     const [username, setUsername] = useState<string | null>(null);
     const { data: exerciseData, isLoading } = useExercise(Number(id));
     const [exercise, setExercise] = useState<any>(null);
@@ -144,12 +144,12 @@ export default function ExerciseDetailScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
 
                 {/* Image Section */}
-                <View style={styles.imageContainer}>
+                <View style={[styles.imageContainer, { backgroundColor: '#ffffff' }]}>
                     {exercise.image ? (
                         <Image
                             source={{ uri: getImageUrl(exercise.image) as string }}
                             style={styles.image}
-                            resizeMode="cover"
+                            resizeMode="contain"
                         />
                     ) : (
                         <View style={[styles.placeholderImage, { backgroundColor: cardColor }]}>
@@ -220,6 +220,17 @@ export default function ExerciseDetailScreen() {
                     <ThemedText style={styles.description}>
                         {exercise.description || 'Keine Beschreibung verfügbar.'}
                     </ThemedText>
+
+                    {exercise.difficulties && guestDifficulty && exercise.difficulties[guestDifficulty] && (
+                        <>
+                            <ThemedText type="defaultSemiBold" style={{ marginTop: 15, marginBottom: 5 }}>
+                                Schwierigkeit: {guestDifficulty.charAt(0).toUpperCase() + guestDifficulty.slice(1)}
+                            </ThemedText>
+                            <ThemedText style={styles.description}>
+                                {exercise.difficulties[guestDifficulty]}
+                            </ThemedText>
+                        </>
+                    )}
 
                 </View>
             </ScrollView>

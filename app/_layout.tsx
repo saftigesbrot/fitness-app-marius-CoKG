@@ -84,6 +84,9 @@ function DataPrefetcher() {
         }
       });
 
+      // Zwingend den alten Cache für Übungen löschen, damit die umstrukturierten Dummy-Daten greifen!
+      queryClient.removeQueries({ queryKey: EXERCISE_KEYS.all });
+
       // Seed dummy exercises
       queryClient.setQueryData(
         EXERCISE_KEYS.list(JSON.stringify({ search: '', category: '' })),
